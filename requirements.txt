@@ -1,0 +1,8 @@
+gym
+pettingzoo
+networkx
+matplotlib
+pyzmq
+tornado
+pygame
+bidict

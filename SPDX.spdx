@@ -1,0 +1,5 @@
+SPDXVersion: SPDX-2.1
+PackageName: orbit_defender2d
+PackageOriginator: MIT Lincoln Laboratory
+PackageHomePage: https://github.com/mit-ll/spacegym-od2d
+PackageLicenseDeclared: MIT
