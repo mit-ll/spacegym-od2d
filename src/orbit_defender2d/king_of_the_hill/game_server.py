@@ -512,7 +512,7 @@ class TwoPlayerGameServer(GameServer):
             # access and format game state data
             game_state = self.get_game_state()
             engagement_outcomes = None
-            if cntx is ENGAGE_PHASE:
+            if cntx == ENGAGE_PHASE:
                 engagement_outcomes = [{
                     ACTION_TYPE:i.action_type, 
                     ATTACKER_ID:i.attacker, 
