@@ -7,5 +7,4 @@ dependencies:
   - hypothesis # package testing
   - pip
   - pip:
-    - -e .  # this package
     - -r requirements.txt
