@@ -16,7 +16,7 @@ import json
 import pygame as pg
 
 from pathlib import Path
-from gym import spaces
+from gymnasium import spaces
 from collections import namedtuple, OrderedDict
 from pettingzoo import ParallelEnv
 from pettingzoo.utils import wrappers

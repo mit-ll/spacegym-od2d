@@ -16,13 +16,13 @@ setup(name="orbit_defender2d",
       package_dir={'': 'src'},
       python_requires=">=3",
       install_requires=[
-        "gym"
-        "pettingzoo"
-        "networkx"
-        "matplotlib"
-        "pyzmq"
-        "tornado"
-        "pygame"
-        "bidict"
+        "gymnasium",
+        "pettingzoo",
+        "networkx",
+        "matplotlib",
+        "pyzmq",
+        "tornado",
+        "pygame",
+        "bidict",
       ]
       )
