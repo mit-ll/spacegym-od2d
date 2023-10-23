@@ -17,6 +17,8 @@ GEO_RING = 4
 
 # initial token placement and attributes
 INIT_BOARD_PATTERN = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
+#INIT_BOARD_PATTERN = [(-2,1), (-1,1), (0,1), (1,1), (2,1)] # (relative azim, number of pieces)
+
 INIT_FUEL = {
     U.SEEKER:   100.0,
     U.BLUDGER:  100.0,
