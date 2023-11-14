@@ -16,7 +16,8 @@ import json
 import pygame as pg
 
 from pathlib import Path
-from gymnasium import spaces
+#from gymnasium import spaces
+from gym import spaces
 from collections import namedtuple, OrderedDict
 from pettingzoo import ParallelEnv
 from pettingzoo.utils import wrappers
@@ -167,7 +168,7 @@ class parallel_env(ParallelEnv):
         # Legal actions at current game state
         self.legal_actions = None
 
-	#Flag to track whether we are logging output
+	    #Flag to track whether we are logging output
         self.render_json = None
 
         #Flag to track if game is over
@@ -550,11 +551,26 @@ class parallel_env(ParallelEnv):
         attacked_tokens = []  # tracks which tokens are under attack
         inactive_tokens = []  # tracks which tokens are inactive
         # track each token that is under attack and / or inactive
+
+        #if hasattr(self, 'verbose_actions'):
+        #    self.actions = self.verbose_actions #See if this works... may break other ways to use this env though...
+
         if self.kothgame.game_state[U.TURN_PHASE] == "engagement" and not self._eg_outcomes_phase:
             for token_name, token_state in self.kothgame.token_catalog.items():
-                if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
-                    attacked_tokens.append(token_name)
-
+                #There should be actions that are in koth touple format, but they are probably in gym format instead
+                if self.actions:
+                    print("\n<==== Turn: {} | Phase: {} ====>".format(
+                        self.kothgame.game_state[U.TURN_COUNT], 
+                        self.kothgame.game_state[U.TURN_PHASE]))
+                    print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
+                    if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
+                        attacked_tokens.append(token_name)
+                else:
+                    if hasattr(self, 'verbose_actions'):
+                        print("Trying engagement with verbose actions")
+                        print("Token name: {}   token action: {}".format(token_name, self.verbose_actions[token_name].action_type))
+                        if self.verbose_actions[token_name].action_type == "shoot" or self.verbose_actions[token_name].action_type == "collide":
+                            attacked_tokens.append(token_name)
                 if token_state.satellite.fuel == self.kothgame.inargs.min_fuel:
                     inactive_tokens.append(token_name)
 
@@ -609,18 +625,19 @@ class parallel_env(ParallelEnv):
 
             pos = token_state.position
             move_str = ""
-            if self.actions and self.kothgame.game_state[U.TURN_PHASE] == "movement":
-                # determine movement type
-                if self.actions[token_name].action_type == "prograde":
-                    move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
-                elif self.actions[token_name].action_type == "retrograde":
-                    move_str = " > " + str(self.kothgame.board_grid.get_retrograde_sector(pos))
-                elif self.actions[token_name].action_type == "radial_in":
-                    move_str = " > " + str(self.kothgame.board_grid.get_radial_in_sector(pos))
-                elif self.actions[token_name].action_type == "radial_out":
-                    move_str = " > " + str(self.kothgame.board_grid.get_radial_out_sector(pos))
-                else:
-                    pass
+            if self.actions:
+                if self.kothgame.game_state[U.TURN_PHASE] == "movement":
+                    # determine movement type
+                    if self.actions[token_name].action_type == "prograde":
+                        move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
+                    elif self.actions[token_name].action_type == "retrograde":
+                        move_str = " > " + str(self.kothgame.board_grid.get_retrograde_sector(pos))
+                    elif self.actions[token_name].action_type == "radial_in":
+                        move_str = " > " + str(self.kothgame.board_grid.get_radial_in_sector(pos))
+                    elif self.actions[token_name].action_type == "radial_out":
+                        move_str = " > " + str(self.kothgame.board_grid.get_radial_out_sector(pos))
+                    else:
+                        pass
             # display engagement or engagement outcomes
             elif self.actions and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
                 # determine target
@@ -1236,7 +1253,8 @@ class parallel_env(ParallelEnv):
 
         # deactivates pygame library and closes render window
         pg.time.wait(self._latency)
-        pg.close()
+        #pg.close()
+        pg.quit()
 
     def reset(self):
         '''
@@ -1269,6 +1287,7 @@ class parallel_env(ParallelEnv):
             return {}, {}, {}, {}
 
         # convert gym-encoded actions to verbose actions and pass to koth game
+        self.verbose_actions = self.decode_all_discrete_actions(actions=actions)
         verbose_actions = self.decode_all_discrete_actions(actions=actions)
 
         # Update state of game
