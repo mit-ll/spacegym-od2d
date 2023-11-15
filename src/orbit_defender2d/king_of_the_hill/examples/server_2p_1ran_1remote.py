@@ -310,7 +310,41 @@ def run_server_2p_1ran_1remote_game():
     print("Terminating server...")
     game_server.terminate()
     game_server.join()
-    
+
+    winner_id = None
+    winner_alias = None
+    alpha_score = cur_game_state[GS.SCORE_ALPHA]
+    beta_score = cur_game_state[GS.SCORE_BETA]
+    if alpha_score > beta_score:
+        winner_id = U.P1
+        winner_alias = alpha_client.alias
+    elif beta_score > alpha_score:
+        winner_id = U.P2
+        winner_alias = "Beta"
+    else:
+        winner_id = 'draw'
+
+    if cur_game_state[GS.TOKEN_STATES][0]['fuel'] <= DGP.MIN_FUEL:
+        term_cond = "alpha out of fuel"
+    elif cur_game_state[GS.TOKEN_STATES][1]['fuel'] <= DGP.MIN_FUEL:
+        term_cond = "beta out of fuel"
+    elif cur_game_state[GS.SCORE_ALPHA] >= DGP.WIN_SCORE:
+        term_cond = "alpha reached Win Score"
+    elif cur_game_state[GS.SCORE_BETA]  >= DGP.WIN_SCORE:
+        term_cond = "beta reached Win Score"
+    elif cur_game_state[GS.TURN_NUMBER]  >= DGP.MAX_TURNS:
+        term_cond = "max turns reached" 
+    else:
+        term_cond = "unknown"
+
+    print(
+        "\n====GAME FINISHED====\n" +
+        "Winner: {} ({})\n".format(winner_alias, winner_id) + 
+        "Score: {}|{}\n".format(alpha_score, beta_score) + 
+        "=====================\n")
+    print("Termination condition: {}".format(term_cond))
+    return
+
 
 
 if __name__ == "__main__":

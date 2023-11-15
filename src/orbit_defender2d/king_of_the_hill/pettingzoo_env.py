@@ -59,20 +59,21 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
 N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
 N_BITS_OBS_TURN_COUNT = 7  # assumes max turns of 100 -> 7 bits binary
 N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
-N_BITS_OBS_HILL = 64  # own_hill boolean + 63 sectors as one-hot
-N_BITS_OBS_SCOREBOARD = 162  # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
+N_BITS_OBS_HILL = int(DGP.NUM_SPACES+1+1) #number of spaces plus 1 plus a boolen for owner of hill
+N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
 N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
 N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
-N_BITS_OBS_POSITION = 63  # assumes 5 rings, 63 sectors
+N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
 N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
 N_BITS_OBS_AMMO = 1  # assumes max ammo of 1 -> 1 bit binary
-N_BITS_OBS_PER_TOKEN = 74  # number of bits for a single token observation
-N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens
-N_BITS_OBS_PER_PLAYER = 1790  # total number of bits for each player's complete observation
+N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
+N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
+N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(DGP.NUM_TOKENS_PER_PLAYER) #number of tokens per player * bits per token
+N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
 # cross-check hard-coded bit sizes with variables upon which they depend
 assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
-assert N_BITS_OBS_POSITION == 2 ** (DGP.MAX_RING + 1) - 1
+assert N_BITS_OBS_POSITION == int(DGP.NUM_SPACES)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
 assert N_BITS_OBS_FUEL == max(
     len(U.int2bitlist(int(DGP.INIT_FUEL[U.SEEKER]))),
     len(U.int2bitlist(int(DGP.INIT_FUEL[U.BLUDGER]))))
@@ -84,8 +85,8 @@ assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_O
 # action space flat encoding
 # Note: hard-coding and then cross checking in order
 # to avoid inadvertent observation space dimension changes
-N_BITS_ACT_PER_TOKEN = 38
-N_BITS_ACT_PER_PLAYER = 418
+N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*DGP.NUM_TOKENS_PER_PLAYER  #should be movement types + engagement types*tokens per player
+N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(DGP.NUM_TOKENS_PER_PLAYER) #should be tokens per player * bits per token action
 
 def env(rllib_env_config=None):
     '''

@@ -11,13 +11,16 @@
 import orbit_defender2d.utils.utils as U
 
 # board sizing
-MAX_RING = 5
-MIN_RING = 1
+MAX_RING = 4
+MIN_RING = 2
 GEO_RING = 4
+NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING - 1) #Get the number of spaces in the board (not including the center)
 
 # initial token placement and attributes
-INIT_BOARD_PATTERN = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
-#INIT_BOARD_PATTERN = [(-2,1), (-1,1), (0,1), (1,1), (2,1)] # (relative azim, number of pieces)
+#INIT_BOARD_PATTERN = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN = [(-2,1), (-1,1), (0,1), (1,1), (2,1)] # (relative azim, number of pieces)
+
+NUM_TOKENS_PER_PLAYER = sum([a[1] for a in INIT_BOARD_PATTERN])+1 #Get the number of tokens per player, plus 1 for the seeker
 
 INIT_FUEL = {
     U.SEEKER:   100.0,
