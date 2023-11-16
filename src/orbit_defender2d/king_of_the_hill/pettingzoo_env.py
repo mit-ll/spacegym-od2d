@@ -26,6 +26,7 @@ from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for som
 
 import orbit_defender2d.utils.utils as U
 import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+#import orbit_defender2d.king_of_the_hill.default_game_parameters_small as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC
@@ -566,10 +567,10 @@ class parallel_env(ParallelEnv):
                     print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
                     if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
                         attacked_tokens.append(token_name)
-                else:
+                else: #TODO: I think this else can be deleted now...
                     if hasattr(self, 'verbose_actions'):
-                        print("Trying engagement with verbose actions")
-                        print("Token name: {}   token action: {}".format(token_name, self.verbose_actions[token_name].action_type))
+                        #print("Trying engagement with verbose actions")
+                        #print("Token name: {}   token action: {}".format(token_name, self.verbose_actions[token_name].action_type))
                         if self.verbose_actions[token_name].action_type == "shoot" or self.verbose_actions[token_name].action_type == "collide":
                             attacked_tokens.append(token_name)
                 if token_state.satellite.fuel == self.kothgame.inargs.min_fuel:
@@ -626,8 +627,7 @@ class parallel_env(ParallelEnv):
 
             pos = token_state.position
             move_str = ""
-            if self.actions:
-                if self.kothgame.game_state[U.TURN_PHASE] == "movement":
+            if self.actions and self.kothgame.game_state[U.TURN_PHASE] == "movement":
                     # determine movement type
                     if self.actions[token_name].action_type == "prograde":
                         move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
@@ -1255,7 +1255,7 @@ class parallel_env(ParallelEnv):
         # deactivates pygame library and closes render window
         pg.time.wait(self._latency)
         #pg.close()
-        pg.quit()
+        #pg.quit() #Don't need either, let the user decide when to close the window
 
     def reset(self):
         '''
@@ -1567,7 +1567,7 @@ class parallel_env(ParallelEnv):
         # own-hill observation
         obs_own_hill = self.kothgame.game_state[own_hill]
         obs_own_hill = tuple((np.array([True]), obs_own_hill))
-        assert self.obs_space_info.scoreboard['own_hill'].contains(obs_own_hill)
+        assert self.obs_space_info.scoreboard['own_hill'].contains(obs_own_hill) #TODO: Figure out why I can't get this to work
         flat_obs_own_hill = spaces.flatten(self.obs_space_info.scoreboard['own_hill'], obs_own_hill)
         assert flat_obs_own_hill.shape == (N_BITS_OBS_HILL,)
 

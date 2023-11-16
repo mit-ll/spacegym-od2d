@@ -5,6 +5,7 @@
 import numpy as np
 import networkx as nx
 import orbit_defender2d.utils.utils as U
+import orbit_defender2d.king_of_the_hill.game_server as GS
 from copy import deepcopy
 from collections import namedtuple, OrderedDict
 from typing import Dict, List, Tuple
@@ -236,6 +237,88 @@ class KOTHGame:
         game_state[U.TURN_COUNT] = 0
         game_state[U.GAME_DONE] = False
         game_state[U.TURN_PHASE] = U.MOVEMENT
+
+        # update token adjacency graph
+        game_state[U.TOKEN_ADJACENCY] = get_token_adjacency_graph(self.board_grid, token_catalog)
+
+        # update legal actions
+        game_state[U.LEGAL_ACTIONS] = get_legal_verbose_actions(
+            turn_phase=game_state[U.TURN_PHASE],
+            token_catalog=token_catalog,
+            board_grid=self.board_grid,
+            token_adjacency_graph=game_state[U.TOKEN_ADJACENCY],
+            min_ring=self.inargs.min_ring,
+            max_ring=self.inargs.max_ring)
+
+        return game_state, token_catalog, n_tokens_alpha, n_tokens_beta
+    
+    def arbitrary_game_state_from_server(self,cur_game_state) -> Tuple:
+        ''' returns initial board configuration of pieces 
+
+        Args:
+            cur_game_state (Dict): state of game passed from the game server
+            
+        Returns:
+            game_state (Dict): state of game and tokens within game
+            token_catalog (Dict): token states with token names as keys
+            n_token_alpha (int): number of tokens for player alpha
+            n_token_beta (int): number of tokens for player beta 
+        '''
+        game_state = {U.P1:dict(), U.P2:dict()}
+        token_catalog = OrderedDict()
+        
+        # Specify goal locations (i.e. "hills") in geo 180 degrees offset
+        game_state[U.GOAL1] = cur_game_state[GS.GOAL_ALPHA] #p1hill
+        game_state[U.GOAL2] = cur_game_state[GS.GOAL_BETA] #p2hill
+
+        # Populate the seeker pieces at team target sectors (hills)
+        p1_state = [None] #TODO: Get rid of hardcoded piece names
+        p1_state[0] = token_catalog["alpha:seeker:0"] = KOTHTokenState(
+                Satellite(fuel=cur_game_state[GS.TOKEN_STATES][0]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][0]['ammo']), 
+                role=cur_game_state[GS.TOKEN_STATES][0]['role'], 
+                position=cur_game_state[GS.TOKEN_STATES][0]['position'])
+        n_tokens_alpha = 1
+
+        p2_state = [None]
+        p2_state[0] = token_catalog["beta:seeker:0"] = KOTHTokenState(
+                Satellite(fuel=cur_game_state[GS.TOKEN_STATES][1]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][1]['ammo']), 
+                role=cur_game_state[GS.TOKEN_STATES][1]['role'], 
+                position=cur_game_state[GS.TOKEN_STATES][1]['position'])
+        n_tokens_beta = 1
+
+        # Populate team bludger pieces based on init_pattern relative to target sectors (hills)
+        n_sats = len(cur_game_state[GS.TOKEN_STATES])/2 - 1
+        if n_sats % 1 != 0:
+            raise ValueError("Uneven number of satellites")
+        else:
+            n_sats = int(n_sats)
+
+        for sat_i in range(n_sats):
+            p1_state.append(None)
+            p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
+                KOTHTokenState(
+                    Satellite(fuel=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['ammo']), 
+                    role=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['role'], 
+                    position=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['position'])
+            n_tokens_alpha += 1
+
+        
+        for sat_i in range(n_sats):
+            p2_state.append(None)
+            p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
+                KOTHTokenState(
+                    Satellite(fuel=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['ammo']), 
+                    role=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['role'], 
+                    position=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['position'])
+            n_tokens_beta += 1
+
+        game_state[U.P1][U.TOKEN_STATES] = p1_state #p1state
+        game_state[U.P1][U.SCORE] = cur_game_state[GS.SCORE_ALPHA] #p1score
+        game_state[U.P2][U.TOKEN_STATES] = p2_state #p2state
+        game_state[U.P2][U.SCORE] = cur_game_state[GS.SCORE_BETA] #p2score
+        game_state[U.TURN_COUNT] = cur_game_state[GS.TURN_NUMBER] #turn number
+        game_state[U.GAME_DONE] = cur_game_state[GS.GAME_DONE] #game done
+        game_state[U.TURN_PHASE] = cur_game_state[GS.TURN_PHASE] #turn phase
 
         # update token adjacency graph
         game_state[U.TOKEN_ADJACENCY] = get_token_adjacency_graph(self.board_grid, token_catalog)
