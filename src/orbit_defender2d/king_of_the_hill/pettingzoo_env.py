@@ -1354,7 +1354,7 @@ class parallel_env(ParallelEnv):
 
         if all(dones.values()):
             self.gameover = True
-            print('Game has ended')
+            #print('Game has ended')
             
          #Close file if game is over
         if self.gameover and (self.render_json is not None):
