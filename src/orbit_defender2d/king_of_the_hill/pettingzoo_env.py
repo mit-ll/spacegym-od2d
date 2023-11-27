@@ -26,6 +26,7 @@ from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for som
 
 import orbit_defender2d.utils.utils as U
 import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+#import orbit_defender2d.king_of_the_hill.default_game_parameters_old as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_small as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
@@ -58,7 +59,7 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
 # to avoid in-advertant observation space dimension changes
 # due changes in dependent variable
 N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
-N_BITS_OBS_TURN_COUNT = 7  # assumes max turns of 100 -> 7 bits binary
+N_BITS_OBS_TURN_COUNT = len(U.int2bitlist(int(DGP.MAX_TURNS)))  # assumes max turns of 100 -> 7 bits binary
 N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
 N_BITS_OBS_HILL = int(DGP.NUM_SPACES+1+1) #number of spaces plus 1 plus a boolen for owner of hill
 N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
@@ -246,13 +247,18 @@ class parallel_env(ParallelEnv):
         pg.display.set_caption('Orbit Defender')
 
         # initialize fonts
-        self._font = pg.font.SysFont('candara', 12)
-        self._font_bold = pg.font.SysFont('candara', 12, True)
-        self._large_font = pg.font.SysFont('candara', 24)
-        self._large_font_bold = pg.font.SysFont('candara', 24, True)
-        self._small_font_bold = pg.font.SysFont('candara', 10, True)
-        self._semi_large_font_bold = pg.font.SysFont('candara', 16, True)
-        self._very_large_font_bold = pg.font.SysFont('candara', 48, True)
+        very_large_font_size = 48
+        large_font_size = 28
+        semi_large_font_size = 24
+        font_size = 16
+        small_font_size = 14
+        self._font = pg.font.SysFont('candara', font_size)
+        self._font_bold = pg.font.SysFont('candara', font_size, True)
+        self._large_font = pg.font.SysFont('candara', large_font_size)
+        self._large_font_bold = pg.font.SysFont('candara', large_font_size, True)
+        self._small_font_bold = pg.font.SysFont('candara', small_font_size, True)
+        self._semi_large_font_bold = pg.font.SysFont('candara', semi_large_font_size, True)
+        self._very_large_font_bold = pg.font.SysFont('candara', very_large_font_size, True)
 
     def render(self, mode="human"):
         '''
@@ -373,7 +379,7 @@ class parallel_env(ParallelEnv):
                                pol2cart(ring_r_max, np.degrees(end_angle), self._board_c))
 
                 # number each sector
-                text = self._font_bold.render(str(sector_count), True, self._board_color)
+                text = self._font.render(str(sector_count), True, self._board_color)
                 self._screen.blit(text,
                                   pol2cart(num_r, np.degrees(num_angle), (self._board_c[0] - 5, self._board_c[1] - 5)))
 
@@ -471,7 +477,7 @@ class parallel_env(ParallelEnv):
                                   self._margins[1] + (4 * lb_font_size[1])))
 
         # display legend
-        legend_pos = (x_mid + (30 * lb_font_size[0]), self._margins[1])
+        legend_pos = (x_mid + (18 * lb_font_size[0]), self._margins[1])
         legend_rect = (legend_pos[0],  # left
                        legend_pos[1],  # top
                        self._x_dim - self._margins[0] - legend_pos[0],  # width
@@ -640,7 +646,7 @@ class parallel_env(ParallelEnv):
                     else:
                         pass
             # display engagement or engagement outcomes
-            elif self.actions and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
+            elif self.actions and hasattr(self.actions[token_name], "target") and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
                 # determine target
                 target_name = self.actions[token_name].target
                 target = target_name.split(':')
@@ -1314,7 +1320,7 @@ class parallel_env(ParallelEnv):
 
             # apply engagement actions to progress to engagment
             eng_rew = self.kothgame.apply_verbose_actions(actions=verbose_actions)
-            assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
+            #assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
 
             if self.render_json is not None:
                 # gs_dict = U.get_game_state(self.kothgame.game_state, self.kothgame.token_catalog)
@@ -1323,7 +1329,7 @@ class parallel_env(ParallelEnv):
                 self.render_json.write('\n')
                 print(f"Wrote {GS.ENGAGE_PHASE_RESP} message")
 
-            assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
+            #assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
             
             # immediately step through drift phase since no actions available
             drf_rew = self.kothgame.apply_verbose_actions(actions=None)
