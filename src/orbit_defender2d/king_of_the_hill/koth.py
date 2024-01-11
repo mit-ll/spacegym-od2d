@@ -5,7 +5,6 @@
 import numpy as np
 import networkx as nx
 import orbit_defender2d.utils.utils as U
-import orbit_defender2d.king_of_the_hill.game_server as GS
 from copy import deepcopy
 from collections import namedtuple, OrderedDict
 from typing import Dict, List, Tuple
@@ -253,6 +252,7 @@ class KOTHGame:
         return game_state, token_catalog, n_tokens_alpha, n_tokens_beta
     
     def arbitrary_game_state_from_server(self,cur_game_state) -> Tuple:
+        import orbit_defender2d.king_of_the_hill.game_server as GS
         ''' returns initial board configuration of pieces 
 
         Args:
