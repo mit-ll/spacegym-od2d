@@ -567,10 +567,10 @@ class parallel_env(ParallelEnv):
             for token_name, token_state in self.kothgame.token_catalog.items():
                 #There should be actions that are in koth touple format, but they are probably in gym format instead
                 if self.actions:
-                    print("\n<==== Turn: {} | Phase: {} ====>".format(
-                        self.kothgame.game_state[U.TURN_COUNT], 
-                        self.kothgame.game_state[U.TURN_PHASE]))
-                    print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
+                    #print("\n<==== Turn: {} | Phase: {} ====>".format(
+                    #    self.kothgame.game_state[U.TURN_COUNT], 
+                    #    self.kothgame.game_state[U.TURN_PHASE]))
+                    #print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
                     if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
                         attacked_tokens.append(token_name)
                 else: #TODO: I think this else can be deleted now...
