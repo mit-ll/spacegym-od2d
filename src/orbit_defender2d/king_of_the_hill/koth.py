@@ -399,7 +399,7 @@ class KOTHGame:
         '''
         illegal_actions, alpha_illegal, beta_illegal = get_illegal_verbose_actions(actions, self.game_state[U.LEGAL_ACTIONS])
         if len(illegal_actions) > 0:
-            # print("WARNING: Game terminated due to illegal actions {}".format(illegal_actions))
+            print("WARNING: Illegal actions {}".format(illegal_actions))
 
             # set player's score if illegal action selected
             if alpha_illegal:
@@ -747,6 +747,28 @@ class KOTHGame:
                     prob=self.get_engagement_probability(t, a.target, a.action_type)) for  t, a in actions.items()}
             
         return actions
+    
+    def get_noop_actions(self) -> Dict:
+        '''get only noop actions for each token
+        
+        Returns:
+            actions (dict): verbose action description
+                            key is piece id token_catalog, one for each piece in game
+                            value is the piece's movement tuple (U.MOVEMENT_TYPES) or 
+                            engagement tuple (ENGAGMENT_TYPE, target_piece_id, prob)
+        '''
+        actions = None
+        if self.game_state[U.TURN_PHASE] != U.DRIFT:
+            actions = {t:a[0] for t, a in self.game_state[U.LEGAL_ACTIONS].items()}
+
+            # apply appropriate probabilities for engagements
+            if self.game_state[U.TURN_PHASE] == U.ENGAGEMENT:
+                actions = {t:U.EngagementTuple(
+                    action_type=a.action_type, 
+                    target=a.target, 
+                    prob=self.get_engagement_probability(t, a.target, a.action_type)) for  t, a in actions.items()}
+            
+        return actions
 
     def get_token_id(self, player_id, token_num):
         '''get full token id from player name and token number'''
@@ -903,43 +925,49 @@ def get_legal_verbose_actions(
         legal_actions[token_name] = []
 
         if turn_phase == U.MOVEMENT:
-            # no-operation, prograde, and retrograde always valid
-            legal_actions[token_name].extend([
-                U.MovementTuple(U.NOOP), 
-                U.MovementTuple(U.PROGRADE), 
-                U.MovementTuple(U.RETROGRADE)])
+            if token_state.satellite.fuel <= 0:
+                legal_actions[token_name].append(U.MovementTuple(U.NOOP))
+            else:
+                # no-operation, prograde, and retrograde always valid
+                legal_actions[token_name].extend([
+                    U.MovementTuple(U.NOOP), 
+                    U.MovementTuple(U.PROGRADE), 
+                    U.MovementTuple(U.RETROGRADE)])
 
-            # radial_in valid if piece is not in min ring
-            if board_grid.sector_num2ring(token_state.position) > min_ring:
-                legal_actions[token_name].append(U.MovementTuple(U.RADIAL_IN))
+                # radial_in valid if piece is not in min ring
+                if board_grid.sector_num2ring(token_state.position) > min_ring:
+                    legal_actions[token_name].append(U.MovementTuple(U.RADIAL_IN))
 
-            # radial_out valid if piece is not in max ring
-            if board_grid.sector_num2ring(token_state.position) < max_ring:
-                legal_actions[token_name].append(U.MovementTuple(U.RADIAL_OUT))
+                # radial_out valid if piece is not in max ring
+                if board_grid.sector_num2ring(token_state.position) < max_ring:
+                    legal_actions[token_name].append(U.MovementTuple(U.RADIAL_OUT))
 
         elif turn_phase == U.ENGAGEMENT:
-            # evaluate legal engagements for token
+            if token_state.satellite.fuel <= 0:
+                legal_actions[token_name].append(U.EngagementTuple(U.NOOP, token_name, None))
+            else:
+                # evaluate legal engagements for token
 
-            # extract player name (it affects what actions are legal)
-            player_name = token_name.split(U.TOKEN_DELIMITER)[0]
+                # extract player name (it affects what actions are legal)
+                player_name = token_name.split(U.TOKEN_DELIMITER)[0]
 
-            # no-operation is always valid
-            legal_actions[token_name].append(U.EngagementTuple(U.NOOP, token_name, None))
+                # no-operation is always valid
+                legal_actions[token_name].append(U.EngagementTuple(U.NOOP, token_name, None))
 
-            # get valid engagements based on piece adjacency
-            for target_token_name in token_adjacency_graph.neighbors(token_name):
-                assert target_token_name != token_name
-                target_player_name = target_token_name.split(U.TOKEN_DELIMITER)[0]
+                # get valid engagements based on piece adjacency
+                for target_token_name in token_adjacency_graph.neighbors(token_name):
+                    assert target_token_name != token_name
+                    target_player_name = target_token_name.split(U.TOKEN_DELIMITER)[0]
 
-                if player_name == target_player_name:
-                    # only guard action legal for same player
-                    legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
-                else:
-                    # collide is legal (even if insufficient fuel)
-                    legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
-                    # shoot only legal if ammo available
-                    if token_state.satellite.ammo >= 1:
-                        legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
+                    if player_name == target_player_name:
+                        # only guard action legal for same player
+                        legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
+                    else:
+                        # collide is legal (even if insufficient fuel)
+                        legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
+                        # shoot only legal if ammo available
+                        if token_state.satellite.ammo >= 1:
+                            legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
 
         elif turn_phase == U.DRIFT:
             # no legal actions during drift
