@@ -901,117 +901,109 @@ class parallel_env(ParallelEnv):
                 # counts of each type of token
                 # 'AS': Alpha Seeker, 'ABA': Alpha Bludger Active, 'ABI': Alpha Bludger Inactive,
                 # 'BS': Beta Seeker, 'BBA': Beta Bludger Active, 'BBI': Beta Bludger Inactive
-                sector_occupancies[token_state.position] = {'AS': 0, 'ABA': 0, 'ABI': 0,
-                                                            'BS': 0, 'BBA': 0, 'BBI': 0,'token_num': []}
+                sector_occupancies[token_state.position] = {'AS': [], 'ABA': [], 'ABI': [],
+                                                            'BS': [], 'BBA': [], 'BBI': []}
             if split_name[0] == "alpha":
                 if split_name[1] == "seeker":
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['AS'] = 1  # track active alpha seeker
+                        sector_occupancies[token_state.position]['AS'] = [1]  # track active alpha seeker
                     else:
-                        sector_occupancies[token_state.position]['AS'] = -1  # track inactive alpha seeker
+                        sector_occupancies[token_state.position]['AS'] = [-1]  # track inactive alpha seeker
                 else:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['ABA'] += 1  # track active alpha bludgers
+                        sector_occupancies[token_state.position]['ABA'].append(int(split_name[2]))  # track active alpha bludgers
                     else:
-                        sector_occupancies[token_state.position]['ABI'] += 1  # track inactive alpha bludgers
+                        sector_occupancies[token_state.position]['ABI'].append(int(split_name[2]))  # track inactive alpha bludgers
             else:
                 if split_name[1] == "seeker":
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['BS'] = 1  # track active beta seeker
+                        sector_occupancies[token_state.position]['BS'] = [1]  # track active beta seeker
                     else:
-                        sector_occupancies[token_state.position]['BS'] = -1  # track inactive beta seeker
+                        sector_occupancies[token_state.position]['BS'] = [-1]  # track inactive beta seeker
                 else:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['BBA'] += 1  # track active beta bludgers
+                        sector_occupancies[token_state.position]['BBA'].append(int(split_name[2]))  # track active beta bludgers
                     else:
-                        sector_occupancies[token_state.position]['BBI'] += 1  # track inactive beta bludgers
-            sector_occupancies[token_state.position]['token_num'].append(int(split_name[2]))
+                        sector_occupancies[token_state.position]['BBI'].append(int(split_name[2]))  # track inactive beta bludgers
 
         # for each occupied sector, draw all tokens within (Seekers depicted as squares, Bludgers depicted as circles)
         for sector, tokens in sector_occupancies.items():
             seeker_size = self._board_r / self._ring_count / 4
             bludger_size = 3 * seeker_size / 4
-            token_nums = tokens['token_num']
             # tracks total count and progress of drawing all level 1 tokens within the sector (Inactive Bludgers)
-            token_count1 = tokens['ABI'] + tokens['BBI']
+            token_count1 = len(tokens['ABI']) + len(tokens['BBI'])
             token_idx1 = 0
             # tracks total count and progress of drawing all level 2 tokens within the sector (Active Bludgers)
-            token_count2 = tokens['ABA'] + tokens['BBA']
+            token_count2 = len(tokens['ABA']) + len(tokens['BBA'])
             token_idx2 = 0
             # tracks total count and progress of drawing all level 3 tokens within the sector (Seekers)
-            token_count3 = abs(tokens['AS']) + abs(tokens['BS'])
+            token_count3 = len(tokens['AS']) + len(tokens['BS'])
             token_idx3 = 0
-            token_label_counter = 0
 
             # iterate over and draw appropriate amount of each type of token within sector
-            for token_type, local_token_count in tokens.items():
-                if token_type != 'token_num':
-                    if local_token_count:
-                        # determine player / color
-                        if token_type[0] == 'A':
-                            color = self._p1_color
-                            outline_color = self._p1_color_dark
-                        else:
-                            color = self._p2_color
-                            outline_color = self._p2_color_dark
+            for token_type, token_ids in tokens.items():
+                local_token_count = len(token_ids)
+                if local_token_count:
+                    # determine player / color
+                    if token_type[0] == 'A':
+                        color = self._p1_color
+                        outline_color = self._p1_color_dark
+                    else:
+                        color = self._p2_color
+                        outline_color = self._p2_color_dark
 
-                        # determine token type (Seeker / Bludger)
-                        if token_type[1] == 'S':
-                            # determine center and angle of seeker
-                            token_center, token_angle = self.get_token_coords(sector, token_count3, token_idx3, 3)
-                            rect = (pol2cart(seeker_size, token_angle + 45, token_center),
-                                    pol2cart(seeker_size, token_angle + 135, token_center),
-                                    pol2cart(seeker_size, token_angle + 225, token_center),
-                                    pol2cart(seeker_size, token_angle + 315, token_center))
-                            token_idx3 += 1
-                            # determine whether active or inactive
-                            if local_token_count == 1:
-                                pg.draw.polygon(self._screen, color, rect)
-                                pg.draw.polygon(self._screen, outline_color, rect, width=2)
-                            elif local_token_count == -1:
-                                pg.draw.polygon(self._screen, self._null_color, rect)
-                                pg.draw.polygon(self._screen, outline_color, rect, width=2)
-                            #Draw the token number
-                            self._screen.blit(self._large_font.render(str(token_nums[token_label_counter]), True, (0, 0, 0)),
-                                (token_center[0] - (0.5 * b_font_size[0]),
-                                token_center[1] - (0.45 * b_font_size[1])))
-                            token_label_counter += 1
+                    # determine token type (Seeker / Bludger)
+                    if token_type[1] == 'S':
+                        # determine center and angle of seeker
+                        token_center, token_angle = self.get_token_coords(sector, token_count3, token_idx3, 3)
+                        rect = (pol2cart(seeker_size, token_angle + 45, token_center),
+                                pol2cart(seeker_size, token_angle + 135, token_center),
+                                pol2cart(seeker_size, token_angle + 225, token_center),
+                                pol2cart(seeker_size, token_angle + 315, token_center))
+                        token_idx3 += 1
+                        # determine whether active or inactive
+                        if token_ids[0] == 1:
+                            pg.draw.polygon(self._screen, color, rect)
+                            pg.draw.polygon(self._screen, outline_color, rect, width=2)
+                        elif token_ids[0] == -1:
+                            pg.draw.polygon(self._screen, self._null_color, rect)
+                            pg.draw.polygon(self._screen, outline_color, rect, width=2)
+                        #Draw the token number - Always 0 for a seeker
+                        self._screen.blit(self._large_font.render('0', True, (0, 0, 0)),
+                            (token_center[0] - (0.5 * b_font_size[0]),
+                            token_center[1] - (0.45 * b_font_size[1])))
+                    else:
+                        # determine whether active or inactive
+                        if token_type[2] == 'A':
+                            for idx, local_token_idx in enumerate(range(token_idx2, token_idx2 + local_token_count)):
+                                token_center = self.get_token_coords(sector, token_count2, local_token_idx, 2)
+                                pg.draw.circle(self._screen, color, token_center, bludger_size)
+                                pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
+                                if token_ids[idx] != 10:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (0.5 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx2 += 1
+                                else:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (2.3 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx2 += 1
                         else:
-                            # determine whether active or inactive
-                            if token_type[2] == 'A':
-                                for local_token_idx in range(token_idx2, token_idx2 + local_token_count):
-                                    token_center = self.get_token_coords(sector, token_count2, local_token_idx, 2)
-                                    pg.draw.circle(self._screen, color, token_center, bludger_size)
-                                    pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
-                                    if token_nums[token_label_counter] != 10:
-                                        self._screen.blit(self._large_font.render(str(token_nums[token_label_counter]), True, (0, 0, 0)),
-                                                        (token_center[0] - (0.5 * b_font_size[0]),
-                                                        token_center[1] - (0.45 * b_font_size[1])))
-                                        token_label_counter += 1
-                                        token_idx2 += 1
-                                    else:
-                                        self._screen.blit(self._large_font.render(str(token_nums[token_label_counter]), True, (0, 0, 0)),
-                                                        (token_center[0] - (2.3 * b_font_size[0]),
-                                                        token_center[1] - (0.45 * b_font_size[1])))
-                                        token_label_counter += 1
-                                        token_idx2 += 1
-                            else:
-                                for local_token_idx in range(token_idx1, token_idx1 + local_token_count):
-                                    token_center = self.get_token_coords(sector, token_count1, local_token_idx, 1)
-                                    pg.draw.circle(self._screen, self._null_color, token_center, bludger_size)
-                                    pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
-                                    if token_nums[token_label_counter] != 10:
-                                        self._screen.blit(self._large_font.render(str(token_nums[token_label_counter]), True, (0, 0, 0)),
-                                                        (token_center[0] - (0.5 * b_font_size[0]),
-                                                        token_center[1] - (0.45 * b_font_size[1])))
-                                        token_label_counter += 1
-                                        token_idx1 += 1
-                                    else:
-                                        self._screen.blit(self._large_font.render(str(token_nums[token_label_counter]), True, (0, 0, 0)),
-                                                        (token_center[0] - (2.3 * b_font_size[0]),
-                                                        token_center[1] - (0.45 * b_font_size[1])))
-                                        token_label_counter += 1
-                                        token_idx1 += 1
+                            for idx, local_token_idx in enumerate(range(token_idx1, token_idx1 + local_token_count)):
+                                token_center = self.get_token_coords(sector, token_count1, local_token_idx, 1)
+                                pg.draw.circle(self._screen, self._null_color, token_center, bludger_size)
+                                pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
+                                if token_ids[idx] != 10:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (0.5 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx1 += 1
+                                else:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (2.3 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx1 += 1
 
     def get_token_coords(self, sector, token_count, token_idx, level):
         '''Takes a sector, a total number of tokens within the sector, a token index local to the sector, and a level,
