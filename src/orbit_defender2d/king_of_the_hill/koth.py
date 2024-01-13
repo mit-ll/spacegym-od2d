@@ -615,7 +615,7 @@ class KOTHGame:
 
             elif egout.action_type == U.COLLIDE:    # handle collide engagement outcomes
 
-                # move pieces to target sector if they chose and adjacent-sector engagement
+                # move pieces to target sector if they chose an adjacent-sector engagement
                 self.token_catalog[egout.attacker].position = self.token_catalog[egout.target].position
 
                 # zero-out fuel of destroyed attacker and target token if engagement successful
@@ -865,10 +865,14 @@ def get_illegal_verbose_actions(actions: Dict, legal_actions: Dict):
         alpha_illegal (bool): true if player alpha selected any illegal actions
         beta_illegal (bool): true if player beta selected any illegal actions
     '''
-    illegal_actions = {tok:act for tok,act in actions.items() if not is_legal_verbose_action(tok,act,legal_actions)}
-    alpha_illegal = any([tok.split(U.TOKEN_DELIMITER)[0] == U.P1 for tok in illegal_actions.keys()])
-    beta_illegal = any([tok.split(U.TOKEN_DELIMITER)[0] == U.P2 for tok in illegal_actions.keys()])
-    return illegal_actions, alpha_illegal, beta_illegal
+    #if actions is None return empty dict
+    if actions is None:
+        return dict(), False, False
+    else:
+        illegal_actions = {tok:act for tok,act in actions.items() if not is_legal_verbose_action(tok,act,legal_actions)}
+        alpha_illegal = any([tok.split(U.TOKEN_DELIMITER)[0] == U.P1 for tok in illegal_actions.keys()])
+        beta_illegal = any([tok.split(U.TOKEN_DELIMITER)[0] == U.P2 for tok in illegal_actions.keys()])
+        return illegal_actions, alpha_illegal, beta_illegal
     
 
 def is_legal_verbose_action(token, action, legal_actions):
@@ -989,6 +993,11 @@ def print_game_info(game):
         print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(toknm, tok.position, tok.satellite.fuel))
     print("alpha|beta score: {}|{}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]))
 
+def print_scores(game):
+    #Print the turn number and the score for each player
+    #print("Score at Turn : {} and Phase : {}".format(game.game_state[U.TURN_COUNT], game.game_state[U.TURN_PHASE]))
+    print("alpha score: {}  |  beta score: {}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]))
+
 def print_actions(actions):
     print("ACTIONS:")
     if actions is None:
@@ -996,3 +1005,23 @@ def print_actions(actions):
     else:
         for toknm, act in actions.items():
             print("   {:<15s} | {}".format(toknm, act))
+
+def print_engagement_outcomes(engagement_outcomes):
+    print("ENGAGEMENT OUTCOMES:")
+    #if engagement_outcomes is empty print No engagements
+    if not engagement_outcomes:
+        print("    No engagements")
+    else:
+        print("   {:<15s} | {:<15s} | {:<15s} |---> {}".format("Action", "Actor", "Target", "Result"))
+        for egout in engagement_outcomes:
+            success_status = "Success" if egout.success else "Failure"
+            if egout.action_type == U.SHOOT or egout.action_type == U.COLLIDE:
+                print("   {:<15s} | {:<15s} | {:<15s} |---> {}".format(
+                    egout.action_type, egout.attacker, egout.target, success_status))
+            elif egout.action_type == U.GUARD:
+                print("   {:<15s} | {:<15s} | {:<15s} |---> {}".format(
+                    egout.action_type, egout.guardian, egout.target, success_status))
+            elif egout.action_type == U.NOOP:
+                print("NOOP")
+            else:
+                raise ValueError("Unrecognized action type {}".format(egout.action_type))
