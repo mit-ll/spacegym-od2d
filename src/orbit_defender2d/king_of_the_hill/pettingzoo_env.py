@@ -1352,7 +1352,7 @@ class parallel_env(ParallelEnv):
                 self.render_json.write('\n')
                 print(f"Wrote {GS.ENGAGE_PHASE_RESP} message")
 
-            #assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
+            assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
             
             # immediately step through drift phase since no actions available
             drf_rew = self.kothgame.apply_verbose_actions(actions=None)

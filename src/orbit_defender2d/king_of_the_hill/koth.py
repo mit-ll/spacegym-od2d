@@ -829,17 +829,11 @@ def get_token_adjacency_graph(board, token_catalog):
     for token1_name, token1_state in token_catalog.items():
         
         # get sectors movement-adjacent to token1
+        # also include both radial out sectors, if applicable
         token1_sec = token1_state.position
         adj_sec = []
         adj_sec.append(token1_sec)
-        adj_sec.append(board.get_relative_azimuth_sector(token1_sec,1))
-        adj_sec.append(board.get_relative_azimuth_sector(token1_sec,-1))
-        out_sec = board.get_radial_out_sector(token1_sec)
-        if out_sec is not None:
-            adj_sec.append(out_sec)
-        in_sec = board.get_radial_in_sector(token1_sec)
-        if in_sec is not None:
-            adj_sec.append(in_sec)
+        adj_sec.extend(board.get_all_adjacent_sectors(token1_sec))
 
         for token2_name, token2_state in token_catalog.items():
 
