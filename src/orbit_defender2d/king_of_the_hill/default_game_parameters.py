@@ -42,12 +42,12 @@ FUEL_USAGE = {
     U.IN_SEC:{
         U.SHOOT: 5.0,
         U.COLLIDE: 20.0,
-        U.GUARD: 20.0
+        U.GUARD: 5.0
     },
     U.ADJ_SEC:{
         U.SHOOT: 7.0, #increased from 5
         U.COLLIDE: 30.0, #Should be higher, was 20
-        U.GUARD: 3.0 #increased from 20
+        U.GUARD: 10.0
     }
 }
 ENGAGE_PROBS = {
