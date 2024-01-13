@@ -960,14 +960,16 @@ def get_legal_verbose_actions(
                     target_player_name = target_token_name.split(U.TOKEN_DELIMITER)[0]
 
                     if player_name == target_player_name:
-                        # only guard action legal for same player
-                        legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
+                        if U.SEEKER in token_name:
+                            # guard is legal for same player's seeker
+                            legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
                     else:
-                        # collide is legal (even if insufficient fuel)
-                        legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
-                        # shoot only legal if ammo available
-                        if token_state.satellite.ammo >= 1:
-                            legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
+                        if token_catalog[target_token_name].satellite.fuel > 0:
+                            # collide is legal (even if insufficient fuel)
+                            legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
+                            # shoot only legal if ammo available
+                            if token_state.satellite.ammo >= 1:
+                                legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
 
         elif turn_phase == U.DRIFT:
             # no legal actions during drift
