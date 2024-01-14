@@ -958,7 +958,7 @@ def get_legal_verbose_actions(
                     target_player_name = target_token_name.split(U.TOKEN_DELIMITER)[0]
 
                     if player_name == target_player_name:
-                        if U.SEEKER in token_name:
+                        if U.SEEKER in target_token_name:
                             # guard is legal for same player's seeker
                             legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
                     else:
