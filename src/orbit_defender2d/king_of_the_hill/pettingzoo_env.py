@@ -607,7 +607,7 @@ class parallel_env(ParallelEnv):
             # determine token type and number (influences vertical alignment)
             if split_name[1] == "seeker":
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1])
-                name_short = "Seeker"
+                name_short = "Seeker 0"
             else:
                 t_num = int(token_name[-1])
                 if t_num == 0:

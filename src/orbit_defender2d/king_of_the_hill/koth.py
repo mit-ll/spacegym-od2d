@@ -253,8 +253,10 @@ class KOTHGame:
     
     def arbitrary_game_state_from_server(self,cur_game_state) -> Tuple:
         import orbit_defender2d.king_of_the_hill.game_server as GS
-        ''' returns initial board configuration of pieces 
-
+        ''' returns kothgame formatted game_state based on gameserver information. 
+            Used to keep the KothGame functions up to date with the game server.
+            Requires importing the GS, which in turn imports KothGame, therefore
+            could cause circular import issues if not careful.
         Args:
             cur_game_state (Dict): state of game passed from the game server
             
@@ -749,7 +751,8 @@ class KOTHGame:
         return actions
     
     def get_noop_actions(self) -> Dict:
-        '''get only noop actions for each token
+        '''get only noop actions for each token 
+            Useful for debugging when you want an inactive player
         
         Returns:
             actions (dict): verbose action description
@@ -778,6 +781,127 @@ class KOTHGame:
         if len(tok_id) != 1:
             raise ValueError("Unexpected number of valid token IDs. Expected single id, got {}".format(tok_id))
         return tok_id[0]
+    
+    def get_input_actions(self, plr_id=U.P2):
+        '''
+        Get the actions from the human player as command line input from the terminal and format as a dictionary to pass to game server
+
+        Input: User action selections from terminal
+
+        Output: Dictionary of verbose actions to pass to KothGame and/or GameServer
+        '''
+        if plr_id == U.P2:
+            target_plr_id = U.P1
+        elif plr_id == U.P1:
+            target_plr_id = U.P2
+
+        actions_dict = {}
+        movements = [U.NOOP, U.PROGRADE, U.RETROGRADE, U.RADIAL_IN, U.RADIAL_OUT]
+        engagements = [U.NOOP, U.SHOOT, U.COLLIDE, U.GUARD]
+        if self.game_state[U.TURN_PHASE] == U.MOVEMENT:
+            for token_name, token_state in self.token_catalog.items():
+                if token_state.satellite.fuel > self.inargs.min_fuel:
+                    if token_name.startswith(plr_id):
+                        #clear the screen
+                        print("\n"*5)
+                        print("Turnphase: {}".format(self.game_state[U.TURN_PHASE]))
+                        print("Token: {}".format(token_name))
+                        print("Select an action from the list")
+                        print("0 - NOOP \n 1 - Prograde \n 2 - Retrograde \n 3 - Radial In \n 4 - Radial Out")
+                        select_valid = 0
+                        while not select_valid:
+                            selection = input("Select action: ")
+                            if selection.isdigit() and int(selection) < len(movements):
+                                    if U.MovementTuple(movements[int(selection)]) in self.game_state[U.LEGAL_ACTIONS][token_name]:
+                                        select_valid = 1
+                                    else:
+                                        print("Invalid selection. Please select a legal action")
+                            else:
+                                print("Invalid selection. Please select a number between 0 and {}".format(len(movements)-1))
+                        #add the action to the dictionary of actions to send to the game server
+                        actions_dict[token_name] = U.MovementTuple(movements[int(selection)])
+                    else:
+                        pass #don't do anything for actions for the other player
+                else:
+                    actions_dict[token_name] = U.MovementTuple(U.NOOP) #If the token is out of fuel then it can't move
+        elif self.game_state[U.TURN_PHASE] == U.ENGAGEMENT:
+            for token_name, token_state in self.token_catalog.items():
+                if token_state.satellite.fuel > self.inargs.min_fuel:
+                    action_valid = 0
+                    if token_name.startswith(plr_id):
+                        action_valid = 0
+                        print("\n"*5)
+                        while not action_valid:
+                            #clear the screen
+                            print("Turnphase: {}".format(self.game_state[U.TURN_PHASE]))
+                            print("Token ID: {}".format(token_name))
+                            print("Select an action from the list")
+                            print("0 - NOOP \n 1 - Shoot \n 2 - Collide \n 3 - Guard")
+                            select_valid = 0
+                            while not select_valid:
+                                selection = input("Select action: ")
+                                if selection.isdigit() and int(selection) < len(engagements):
+                                        select_valid = 1
+                                else:
+                                        print("Invalid selection. Please select a number between 0 and {}".format(len(engagements)-1))
+                            #if the action is not a noop then prompt the player to select a target
+                            if int(selection) != 0:
+                                tgt_valid = 0
+                                while not tgt_valid:
+                                    tgt = input("Select target: ")
+                                    if tgt.isdigit():
+                                        if int(tgt) < 11:
+                                            tgt_valid = 1
+                                        else:
+                                            print("Invalid selection. Please select a number between 0 and {}".format(10))
+                                    else:
+                                            print("Invalid selection. Please select a number between 0 and {}".format(10))
+                            else:
+                                tgt = 0    
+                            #add the action to the dictionary of actions to send to the game server
+                            #For engagement phase, the legal actions are a list with entries of actionType and then targetID
+                            if int(selection) >0 and int(selection) < 3:
+                                if int(tgt) != 0: #The target value will be 0 for the seeker and a number between 1 and 10 for the bludgers
+                                    actions_dict[token_name] = U.EngagementTuple(engagements[int(selection)], \
+                                        target_plr_id + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + tgt, \
+                                        self.get_engagement_probability(token_id=token_name,target_id=target_plr_id \
+                                        + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + tgt,engagement_type=engagements[int(selection)]))
+                                else:
+                                    actions_dict[token_name] = U.EngagementTuple(engagements[int(selection)], \
+                                        target_plr_id + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + tgt, \
+                                        self.get_engagement_probability(token_id=token_name,target_id=target_plr_id \
+                                        + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + tgt,engagement_type=engagements[int(selection)]))
+                            elif int(selection) == 3:
+                                # If selection is 3, then the action is guard. The target will have the same player ID as the token that is guarding
+                                actions_dict[token_name] = U.EngagementTuple(engagements[int(selection)], \
+                                    plr_id + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + tgt, \
+                                    self.get_engagement_probability(token_id=token_name,target_id=target_plr_id \
+                                    + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + tgt,engagement_type=engagements[int(selection)]))
+                            elif int(selection) == 0: #If the selection is 0, then the action is NOOP
+                                actions_dict[token_name] = U.EngagementTuple(engagements[int(selection)], token_name,None)
+                            else:
+                                print("Unkonwn action type")
+                            #Check that the action is legal is_legal_verbose_action(token, action, legal_actions):
+                            if not is_legal_verbose_action(token_name, actions_dict[token_name], self.game_state[U.LEGAL_ACTIONS]):
+                                print("Invalid selection. Please select a legal action")
+                            else:
+                                action_valid = 1
+                    else:
+                        pass #don't do anything for actions for the other player
+                else:
+                    actions_dict[token_name] = U.EngagementTuple(U.NOOP, token_name,None) #If the token is out of fuel then it can't take an action
+        else:
+            #for DRFIT phase this function won't be called
+            raise ValueError("Invalid turn phase")
+
+        #Check that none of the actions are illegal
+        all_valid_acts = self.enforce_legal_verbose_actions(actions_dict)
+
+        # evaluate
+        if not all_valid_acts:
+            print("Illegal actions selected, please try again")
+            actions_dict = self.get_input_actions(plr_id=plr_id)
+        return actions_dict
 
 def parse_token_id(t):
     ''' get player_id, role, and token_num from token_id
