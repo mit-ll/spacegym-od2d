@@ -1126,19 +1126,24 @@ def print_actions(actions):
 
 def print_engagement_outcomes(engagement_outcomes):
     print("ENGAGEMENT OUTCOMES:")
-    #if engagement_outcomes is empty print No engagements
+    # if engagement_outcomes is empty print No engagements
     if not engagement_outcomes:
         print("    No engagements")
     else:
-        print("   {:<15s} | {:<15s} | {:<15s} |---> {}".format("Action", "Actor", "Target", "Result"))
+        # print the engagement outcomes for guarding actions first
+        print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format("Action", "Attacker", "Guardian", "Target", "Result"))
         for egout in engagement_outcomes:
             success_status = "Success" if egout.success else "Failure"
             if egout.action_type == U.SHOOT or egout.action_type == U.COLLIDE:
-                print("   {:<15s} | {:<15s} | {:<15s} |---> {}".format(
-                    egout.action_type, egout.attacker, egout.target, success_status))
+                print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                    egout.action_type, egout.attacker, "", egout.target, success_status))
             elif egout.action_type == U.GUARD:
-                print("   {:<15s} | {:<15s} | {:<15s} |---> {}".format(
-                    egout.action_type, egout.guardian, egout.target, success_status))
+                if isinstance(egout.attacker, str):
+                    print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                        egout.action_type, egout.attacker, egout.guardian, egout.target, success_status))
+                else:
+                    print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                        egout.action_type, "", egout.guardian, egout.target, success_status))
             elif egout.action_type == U.NOOP:
                 print("NOOP")
             else:
