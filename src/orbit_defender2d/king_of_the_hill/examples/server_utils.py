@@ -26,6 +26,10 @@ def assert_valid_game_state(game_state):
     # assert 0 < game_state[GS.GOAL_BETA] <= game_board.n_sectors
 
 def print_game_info(game_state):
+    '''
+    Print the game state information from the game server.
+    This is the game server version of game state, so not compatible with the kothgame game state.
+    '''
     print("STATES:")
     for tok in game_state[GS.TOKEN_STATES]:
         print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(tok[GS.PIECE_ID], tok[GS.POSITION], tok[GS.FUEL]))
