@@ -15,6 +15,7 @@ TURN_COUNT = 'turn_count'
 TURN_PHASE = 'turn_phase'
 GAME_DONE = 'game_done'
 SCORE = 'score'
+FUEL_SCORE = 'fuel_score'
 TOKEN_ADJACENCY = 'token_adjacency_graph'
 LEGAL_ACTIONS = 'legal_verbose_actions'
 TURN_PHASE_LIST = [MOVEMENT, ENGAGEMENT, DRIFT] = ['movement', 'engagement', 'drift']

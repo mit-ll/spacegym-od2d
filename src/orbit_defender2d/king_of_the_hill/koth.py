@@ -148,15 +148,21 @@ class KOTHGame:
             self.initial_game_state(
                 init_pattern_alpha=self.inargs.init_board_pattern, 
                 init_pattern_beta=self.inargs.init_board_pattern)
+        #update initial fuel score and score
+        self.game_state[U.P1][U.SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on goal sector and fuel points
+        self.game_state[U.P1][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on fuel remaining
+        self.game_state[U.P2][U.SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on goal sector and fuel points
+        self.game_state[U.P2][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on fuel remaining
 
     def terminate_game(self):
         ''' set game to done and return difference in score as reward
         '''
         self.game_state[U.GAME_DONE] = True
 
+        # No need to update score here. It is updated in drift phase, which is the only place that terminate_game is called
         # update final score from fuel remaining
-        for plr_id in [U.P1, U.P2]:
-            self.game_state[plr_id][U.SCORE] += self.get_fuel_points(player_id=plr_id)
+        #for plr_id in [U.P1, U.P2]:
+        #    self.game_state[plr_id][U.SCORE] += self.get_fuel_points(player_id=plr_id)
 
         score_diff = self.game_state[U.P1][U.SCORE] - self.game_state[U.P2][U.SCORE]
         return {U.P1: score_diff, U.P2: -score_diff}
@@ -232,9 +238,11 @@ class KOTHGame:
 
 
         game_state[U.P1][U.TOKEN_STATES] = p1_state
-        game_state[U.P1][U.SCORE] = 0
+        game_state[U.P1][U.SCORE] = 0 #Score track based on goal sector and fuel points
+        game_state[U.P1][U.FUEL_SCORE] = 0 #Score track based on fuel remaining
         game_state[U.P2][U.TOKEN_STATES] = p2_state
-        game_state[U.P2][U.SCORE] = 0
+        game_state[U.P2][U.SCORE] = 0 #Score track based on goal sector and fuel points
+        game_state[U.P2][U.FUEL_SCORE] = 0 #Score track based on fuel remaining
         game_state[U.TURN_COUNT] = 0
         game_state[U.GAME_DONE] = False
         game_state[U.TURN_PHASE] = U.MOVEMENT
@@ -449,6 +457,7 @@ class KOTHGame:
 
             # evaluate
             if not all_valid_acts:
+                # If there are illegal actions, then terminate the game. Illegal action score is applied in enforce_legal_verbose_actions so doesn't need to be updated here.
                 return self.terminate_game()
 
             # decrement fuel of pieces based on legal action selection, 
@@ -475,12 +484,28 @@ class KOTHGame:
             # no actions to apply in drift, move pieces one sector prograde
             assert actions is None
 
+            #Get fuel points for each player for this turn
+            alpha_fuel_points = self.get_fuel_points(player_id=U.P1)
+            beta_fuel_points = self.get_fuel_points(player_id=U.P2)
 
+            #Get teh goal sector points for each player
+            alpha_goal_points, beta_goal_points = self.get_points()
 
-            # update score for both players
-            alpha_points, beta_points = self.get_points()
-            self.game_state[U.P1][U.SCORE] += alpha_points
-            self.game_state[U.P2][U.SCORE] += beta_points
+            #Get the points for each player from the last round and subtract the fuel score from the last round to get just the goal points (which are cumulative)
+            alpha_score_just_goal = self.game_state[U.P1][U.SCORE] - self.game_state[U.P1][U.FUEL_SCORE]
+            beta_score_just_goal = self.game_state[U.P2][U.SCORE] - self.game_state[U.P2][U.FUEL_SCORE]
+
+            #Add this turn's goal points to the cumulative goal points
+            alpha_score_just_goal += alpha_goal_points
+            beta_score_just_goal += beta_goal_points
+
+            #Add this turn's fuel points to the cumulative goal points to update game score
+            self.game_state[U.P1][U.SCORE] = alpha_score_just_goal + alpha_fuel_points
+            self.game_state[U.P2][U.SCORE] = beta_score_just_goal + beta_fuel_points
+
+            #Update the fuel score for each player
+            self.game_state[U.P1][U.FUEL_SCORE] = alpha_fuel_points
+            self.game_state[U.P2][U.FUEL_SCORE] = beta_fuel_points
 
             # evaluate game termination conditions
             if self.is_terminal_game_state():
@@ -725,11 +750,11 @@ class KOTHGame:
 
         return is_terminal
 
-    def get_fuel_points_old(self, player_id):
-        '''convert fuel remaining in seeker tokens to points'''
-        seeker_tok = self.get_token_id(player_id=player_id, token_num=0)
-        assert U.SEEKER in seeker_tok
-        return self.token_catalog[seeker_tok].satellite.fuel * self.inargs.fuel_points_factor
+    # def get_fuel_points_old(self, player_id):
+    #     '''convert fuel remaining in seeker tokens to points'''
+    #     seeker_tok = self.get_token_id(player_id=player_id, token_num=0)
+    #     assert U.SEEKER in seeker_tok
+    #     return self.token_catalog[seeker_tok].satellite.fuel * self.inargs.fuel_points_factor
 
     def get_fuel_points(self, player_id):
         '''convert fuel remaining in all tokens to points'''
