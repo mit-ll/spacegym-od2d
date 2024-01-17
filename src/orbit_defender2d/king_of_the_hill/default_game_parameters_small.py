@@ -12,9 +12,14 @@ import orbit_defender2d.utils.utils as U
 
 # board sizing
 MAX_RING = 4
-MIN_RING = 2
+MIN_RING = 1
 GEO_RING = 4
-NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING - 1) #Get the number of spaces in the board (not including the center)
+if MIN_RING == 1:
+    NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING) #Get the number of spaces in the board (not including the center)
+elif MIN_RING > 1:
+    NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING - 1) #Get the number of spaces in the board (not including the center)
+else:
+    raise ValueError("MIN_RING must be >= 1")
 
 # initial token placement and attributes
 #INIT_BOARD_PATTERN = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
@@ -42,13 +47,13 @@ FUEL_USAGE = {
     U.RADIAL_OUT: 1.0,
     U.IN_SEC:{
         U.SHOOT: 5.0,
-        U.COLLIDE: 20.0,
-        U.GUARD: 20.0
+        U.COLLIDE: 5.0,
+        U.GUARD: 5.0
     },
     U.ADJ_SEC:{
         U.SHOOT: 5.0,
-        U.COLLIDE: 30.0,
-        U.GUARD: 30.0
+        U.COLLIDE: 10.0,
+        U.GUARD: 10.0
     }
 }
 ENGAGE_PROBS = {

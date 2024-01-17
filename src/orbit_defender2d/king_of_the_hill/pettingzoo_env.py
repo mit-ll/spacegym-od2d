@@ -25,9 +25,9 @@ from pettingzoo.utils import parallel_to_aec
 from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for some reason
 
 import orbit_defender2d.utils.utils as U
-import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+#import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_old as DGP
-#import orbit_defender2d.king_of_the_hill.default_game_parameters_small as DGP
+import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC
@@ -67,9 +67,9 @@ N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
 N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
 N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
 N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
-N_BITS_OBS_AMMO = 1  # assumes max ammo of 1 -> 1 bit binary
+N_BITS_OBS_AMMO = len(U.int2bitlist(int(max(DGP.INIT_AMMO[U.SEEKER],DGP.INIT_AMMO[U.BLUDGER]))))  # assumes max ammo of 1 -> 1 bit binary
 N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
-N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
+#N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
 N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(DGP.NUM_TOKENS_PER_PLAYER) #number of tokens per player * bits per token
 N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
@@ -200,7 +200,7 @@ class parallel_env(ParallelEnv):
         # display dimensions
         self._x_dim = 1280  # 880
         self._y_dim = 720  # 560
-        self._ring_count = 5
+        self._ring_count = self.kothgame.inargs.max_ring - self.kothgame.inargs.min_ring + 1
         self._margins = (10, 10)
         self._board_r = (self._y_dim - self._margins[1]) / 2
         self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)

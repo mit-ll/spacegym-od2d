@@ -2,6 +2,8 @@
 # Subject to FAR 52.227-11 – Patent Rights – Ownership by the Contractor (May 2014).
 # SPDX-License-Identifier: MIT
 
+import os
+import datetime
 import numpy as np
 import networkx as nx
 import orbit_defender2d.utils.utils as U
@@ -549,9 +551,9 @@ class KOTHGame:
 
             fuel -= fuel_usage
             if fuel < self.inargs.min_fuel:
-                # insufficient fuel, set fuel to minimum and
+                # insufficient fuel, leave fuel as is and
                 # set action to noop movement
-                self.token_catalog[token_name].satellite.fuel = self.inargs.min_fuel
+                #self.token_catalog[token_name].satellite.fuel = self.inargs.min_fuel #This was to take all remaining fuel away then still set action to noop. I will instead leave fuel as is and stop the action from happening.
                 fuel_constrained_actions[token_name] = min_fuel_action_tuple
             else:
                 # sufficient fuel, decrement fuel and copy action
@@ -1102,49 +1104,143 @@ def get_legal_verbose_actions(
 
     return legal_actions
 
-def print_game_info(game):
+def print_game_info(game, file=None):
     # print("alpha player state: ")
     # for tok in game.game_state[U.P1][U.TOKEN_STATES]:
     #     print("-->{} | fuel: {} | position: {}".format(tok.satellite.fuel, tok.position))
-    print("STATES:")
+    print("STATES:", file=file)
     for toknm, tok in game.token_catalog.items():
-        print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(toknm, tok.position, tok.satellite.fuel))
-    print("alpha|beta score: {}|{}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]))
+        print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(toknm, tok.position, tok.satellite.fuel), file=file)
+    #print("alpha|beta score: {}|{}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]))
 
-def print_scores(game):
+def print_scores(game, file=None):
     #Print the turn number and the score for each player
     #print("Score at Turn : {} and Phase : {}".format(game.game_state[U.TURN_COUNT], game.game_state[U.TURN_PHASE]))
-    print("alpha score: {}  |  beta score: {}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]))
+    print("alpha score: {}  |  beta score: {}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]), file=file)
 
-def print_actions(actions):
-    print("ACTIONS:")
+def print_actions(actions, file=None):
+    print("ACTIONS:", file=file)
     if actions is None:
-        print("   None")
+        print("   None", file=file)
     else:
         for toknm, act in actions.items():
-            print("   {:<15s} | {}".format(toknm, act))
+            print("   {:<15s} | {}".format(toknm, act), file=file)
 
-def print_engagement_outcomes(engagement_outcomes):
-    print("ENGAGEMENT OUTCOMES:")
+def print_engagement_outcomes(engagement_outcomes, file=None):
+    print("ENGAGEMENT OUTCOMES:", file=file)
     # if engagement_outcomes is empty print No engagements
     if not engagement_outcomes:
-        print("    No engagements")
+        print("    No engagements", file=file)
     else:
         # print the engagement outcomes for guarding actions first
-        print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format("Action", "Attacker", "Guardian", "Target", "Result"))
+        print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format("Action", "Attacker", "Guardian", "Target", "Result"), file=file)
         for egout in engagement_outcomes:
             success_status = "Success" if egout.success else "Failure"
             if egout.action_type == U.SHOOT or egout.action_type == U.COLLIDE:
                 print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
-                    egout.action_type, egout.attacker, "", egout.target, success_status))
+                    egout.action_type, egout.attacker, "", egout.target, success_status), file=file)
             elif egout.action_type == U.GUARD:
                 if isinstance(egout.attacker, str):
                     print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
-                        egout.action_type, egout.attacker, egout.guardian, egout.target, success_status))
+                        egout.action_type, egout.attacker, egout.guardian, egout.target, success_status), file=file)
                 else:
                     print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
-                        egout.action_type, "", egout.guardian, egout.target, success_status))
+                        egout.action_type, "", egout.guardian, egout.target, success_status), file=file)
             elif egout.action_type == U.NOOP:
-                print("NOOP")
+                print("NOOP", file=file)
             else:
+                print("Unrecognized action type {}".format(egout.action_type), file=file)
                 raise ValueError("Unrecognized action type {}".format(egout.action_type))
+def start_log_file(logfile):
+    ''' create a new game log file
+
+    Args:
+        logfile (str): path to game log file
+    '''
+    #Make new filename with date and time appended  to logfile
+    logfile = logfile + "_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".txt"
+    #Check that the file exists and create it if it doesn't exist
+    if not os.path.isfile(logfile):
+        with open(logfile, 'w') as f:
+            #Write header with date and time
+            f.write("Game Log File\n")
+            f.write("Date: {}\n".format(datetime.datetime.now()))
+            f.close()
+
+    return logfile
+
+def log_game_to_file(game, logfile, actions=None):
+    ''' add game state to game log file
+
+    Args:
+        logfile (str): path to game log file
+    '''
+    #Check that the file exists and create it if it doesn't exist
+    if not os.path.isfile(logfile):
+        with open(logfile, 'w') as f:
+            #Write header with date and time
+            f.write("Game Log File\n")
+            f.write("Date: {}\n".format(datetime.datetime.now()))
+            f.close()
+
+    with open(logfile, 'a') as f:
+        #Get the turn number and phase
+        turn = game.game_state[U.TURN_COUNT]
+        phase = game.game_state[U.TURN_PHASE]
+        game_done = game.game_state[U.GAME_DONE]
+
+        #If the game is done, then print the final score and winner
+        if game_done:
+            #Print final engagement outcomes
+            print_engagement_outcomes(game.engagement_outcomes, file=f)
+            print_game_info(game, file=f)
+            winner = None
+            alpha_score =game.game_state[U.P1][U.SCORE]
+            beta_score = game.game_state[U.P2][U.SCORE]
+            if alpha_score > beta_score:
+                winner = U.P1
+            elif beta_score > alpha_score:
+                winner = U.P2
+            else:
+                winner = 'draw'
+
+            cur_game_state = game.game_state
+            if cur_game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
+                print("alpha seeker out of fuel", file=f)
+            if cur_game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
+                print("beta seeker out of fuel", file=f)
+            if cur_game_state[U.P1][U.SCORE] >= game.inargs.win_score:
+                print("alpha reached Win Score", file=f)
+            if cur_game_state[U.P2][U.SCORE]  >= game.inargs.win_score:
+                print("beta reached Win Score", file=f)
+            if cur_game_state[U.TURN_COUNT]  >= game.inargs.max_turns:
+                print("max turns reached", file=f)
+
+            print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score), file=f)
+
+            #Close file and return
+            f.close()
+            return
+        else:
+            #Game is not done, so print latest info
+            #If Turn Phase is Movement and Turn Count >1 print the engagement outcomes from the previous turn
+            if phase == U.MOVEMENT:
+                if turn >= 1:
+                    print_engagement_outcomes(game.engagement_outcomes, file=f) #print engagement outcomes from previous turn
+                    print_game_info(game, file=f) #print the token states at end of turn
+                #Print the current turn number, phase, and scores
+                print("\n<==== Turn: {} | Phase: {} ====>".format(turn, phase), file=f)
+                print_scores(game, file=f)
+                print_actions(actions, file=f) #print the selected movements before they are enacted
+            elif phase == U.ENGAGEMENT:
+                print("\n<==== Turn: {} | Phase: {} ====>".format(turn, phase), file=f)
+                #If phase in engagement, then tokens have just completed the movement phase. Print the token states to see where they moved
+                print_game_info(game, file=f) #print the token states before as the engagements are selected
+                print_actions(actions, file=f) #print the selected engagements before they are enacted
+            elif phase == U.DRIFT:
+                print("\n<==== Turn: {} | Phase: {} ====>".format(turn, phase), file=f) #This should never really get called...
+            else:
+                print("Unrecognized game phase {}".format(phase), file=f)
+                raise ValueError("Unrecognized game phase {}".format(phase))
+            f.close()
+            return
