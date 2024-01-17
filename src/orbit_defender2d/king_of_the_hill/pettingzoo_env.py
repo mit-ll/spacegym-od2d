@@ -252,13 +252,13 @@ class parallel_env(ParallelEnv):
         semi_large_font_size = 24
         font_size = 16
         small_font_size = 14
-        self._font = pg.font.SysFont('candara', font_size)
-        self._font_bold = pg.font.SysFont('candara', font_size, True)
-        self._large_font = pg.font.SysFont('candara', large_font_size)
-        self._large_font_bold = pg.font.SysFont('candara', large_font_size, True)
-        self._small_font_bold = pg.font.SysFont('candara', small_font_size, True)
-        self._semi_large_font_bold = pg.font.SysFont('candara', semi_large_font_size, True)
-        self._very_large_font_bold = pg.font.SysFont('candara', very_large_font_size, True)
+        self._font = pg.font.SysFont(pg.font.get_default_font(), font_size)
+        self._font_bold = pg.font.SysFont(pg.font.get_default_font(), font_size, True)
+        self._large_font = pg.font.SysFont(pg.font.get_default_font(), large_font_size)
+        self._large_font_bold = pg.font.SysFont(pg.font.get_default_font(), large_font_size, True)
+        self._small_font_bold = pg.font.SysFont(pg.font.get_default_font(), small_font_size, True)
+        self._semi_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), semi_large_font_size, True)
+        self._very_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), very_large_font_size, True)
 
     def render(self, mode="human"):
         '''
