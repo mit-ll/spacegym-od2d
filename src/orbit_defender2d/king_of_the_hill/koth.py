@@ -438,6 +438,7 @@ class KOTHGame:
         Returns:
             rewards : dict
                 rewards earned by each player during time step
+                These are the rewards that pettingzoo envs uses to help train the AI agents. They are zero unless the game ends... which is not great...
 
         '''
 
@@ -724,11 +725,24 @@ class KOTHGame:
 
         return is_terminal
 
-    def get_fuel_points(self, player_id):
+    def get_fuel_points_old(self, player_id):
         '''convert fuel remaining in seeker tokens to points'''
         seeker_tok = self.get_token_id(player_id=player_id, token_num=0)
         assert U.SEEKER in seeker_tok
         return self.token_catalog[seeker_tok].satellite.fuel * self.inargs.fuel_points_factor
+
+    def get_fuel_points(self, player_id):
+        '''convert fuel remaining in all tokens to points'''
+        fuel_points = 0
+        for token_name, token_state in self.token_catalog.items():
+            if token_name.startswith(player_id):
+                #if token is a seeker then add the fuel points to the total
+                if token_state.role == U.SEEKER:
+                    fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor
+                #if token is a bludger then add the fuel points to the total with fuel_points_bludger_factor (hard code as 0.1 for now should add this to inargs later)
+                elif token_state.role == U.BLUDGER:
+                    fuel_points += token_state.satellite.fuel * U.BLUDGER_FUEL_POINTS_FACTOR
+        return int(np.floor(fuel_points))
 
     def get_random_valid_actions(self) -> Dict:
         '''create a random-yet-valid action for each token

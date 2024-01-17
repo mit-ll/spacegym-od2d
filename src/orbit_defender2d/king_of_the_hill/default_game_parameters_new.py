@@ -13,7 +13,7 @@ import orbit_defender2d.utils.utils as U
 # board sizing
 MAX_RING = 5
 MIN_RING = 1
-GEO_RING = 5
+GEO_RING = 4
 if MIN_RING == 1:
     NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING) #Get the number of spaces in the board (not including the center)
 elif MIN_RING > 1:
@@ -22,7 +22,7 @@ else:
     raise ValueError("MIN_RING must be >= 1")
 
 # initial token placement and attributes
-INIT_BOARD_PATTERN = [(-2,1), (-1,1), (0,1), (1,1), (2,1)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
 
 NUM_TOKENS_PER_PLAYER = sum([a[1] for a in INIT_BOARD_PATTERN])+1 #Get the number of tokens per player, plus 1 for the seeker
 
@@ -31,8 +31,8 @@ INIT_FUEL = {
     U.BLUDGER:  100.0,
 }
 INIT_AMMO = {
-    U.SEEKER:   5,
-    U.BLUDGER:  10,
+    U.SEEKER:   0,
+    U.BLUDGER:  1,
 }
 
 # engagement and movement parameters
@@ -71,10 +71,11 @@ ENGAGE_PROBS = {
 
 # scoring and game termination
 ILLEGAL_ACT_SCORE = -1000.0
-IN_GOAL_POINTS = 3.0
-ADJ_GOAL_POINTS = 1.0
+IN_GOAL_POINTS = 10.0
+ADJ_GOAL_POINTS = 3.0
 FUEL_POINTS_FACTOR = 1.0
-WIN_SCORE = 100.0
+FUEL_POINTS_FACTOR_BLUDGER = 0.1
+WIN_SCORE = 250.0
 MAX_TURNS = 50 #reduced from 100 to 50
 
 # Derived parameters
