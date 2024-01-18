@@ -1124,11 +1124,13 @@ def get_legal_verbose_actions(
 
                     if player_name == target_player_name:
                         if U.SEEKER in target_token_name:
-                            # guard is legal for same player's seeker
-                            legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
+                            # guard is legal only for same player's seeker and only if at least one adjacent active token is not the same player as the player_name
+                            if any([not is_same_player(token_adjacent_name, token_name) and token_catalog[token_adjacent_name].satellite.fuel > 0 for token_adjacent_name in token_adjacency_graph.neighbors(target_token_name)]):
+                                legal_actions[token_name].append(U.EngagementTuple(U.GUARD, target_token_name, None))
                     else:
+                        #Actions against the other player's tokens are only legal if the target token has fuel remaining (is not inactive)
                         if token_catalog[target_token_name].satellite.fuel > 0:
-                            # collide is legal (even if insufficient fuel)
+                            # collide is legal if target has fuel, even if the actor does not have enough fuel. If actor fuel is insufficient, then this will be filterd out by apply_fuel_constraints
                             legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
                             # shoot only legal if ammo available
                             if token_state.satellite.ammo >= 1:
