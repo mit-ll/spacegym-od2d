@@ -241,7 +241,9 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
     adj_goal_points = DGP.ADJ_GOAL_POINTS,
     fuel_points_factor = DGP.FUEL_POINTS_FACTOR,
     win_score = DGP.WIN_SCORE,
-    max_turns = DGP.MAX_TURNS)
+    max_turns = DGP.MAX_TURNS,
+    fuel_points_factor_bludger = DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    asymmetric_flag=DGP.ASYMMETRIC_FLAG)
 
 
 ROUTER_PORT_NUM = 5555

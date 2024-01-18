@@ -32,7 +32,9 @@ KOTHGameInputArgs = namedtuple('KOTHGameInputArgs',[
     'adj_goal_points',
     'fuel_points_factor',
     'win_score',
-    'max_turns']
+    'max_turns',
+    'fuel_points_factor_bludger',
+    'asymmetric_flag']
 )
 
 class KOTHTokenState:
@@ -74,7 +76,9 @@ class KOTHGame:
         adj_goal_points: float,
         fuel_points_factor: float,
         win_score: float,
-        max_turns: int
+        max_turns: int,
+        fuel_points_factor_bludger: float = 0.1,
+        asymmetric_flag: bool = False
         ):
         '''
         Args:
@@ -131,7 +135,9 @@ class KOTHGame:
             adj_goal_points=adj_goal_points,
             fuel_points_factor=fuel_points_factor,
             win_score=win_score,
-            max_turns=max_turns
+            max_turns=max_turns,
+            fuel_points_factor_bludger=fuel_points_factor_bludger,
+            asymmetric_flag=asymmetric_flag
         )
 
         # member variables derived from input args or elsewhere
@@ -144,15 +150,30 @@ class KOTHGame:
     def reset_game(self):
         ''' reset game state without reinstantiating a new game object
         '''
-        self.game_state, self.token_catalog, self.n_tokens_alpha, self.n_tokens_beta = \
-            self.initial_game_state(
+        if self.inargs.asymmetric_flag:
+            # Read in the asymmetric game parameters from asymmetric_game_parameters.py
+            import orbit_defender2d.king_of_the_hill.asymmetric_game_parameters as AGP
+            # This will take care of asymmetries in the number and location of bluders, initial fuel and ammo for seekers and bludgers.
+            # Asymmetries in the fuel usage and engagement probabilities are handled later on.
+            self.game_state, self.token_catalog, self.n_tokens_alpha, self.n_tokens_beta = \
+            self.initial_game_state_asymmetric(
                 init_pattern_alpha=self.inargs.init_board_pattern, 
                 init_pattern_beta=self.inargs.init_board_pattern)
-        #update initial fuel score and score
-        self.game_state[U.P1][U.SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on goal sector and fuel points
-        self.game_state[U.P1][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on fuel remaining
-        self.game_state[U.P2][U.SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on goal sector and fuel points
-        self.game_state[U.P2][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on fuel remaining
+            #update initial fuel score and score
+            self.game_state[U.P1][U.SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on goal sector and fuel points
+            self.game_state[U.P1][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on fuel remaining
+            self.game_state[U.P2][U.SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on goal sector and fuel points
+            self.game_state[U.P2][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on fuel remaining
+        else:
+            self.game_state, self.token_catalog, self.n_tokens_alpha, self.n_tokens_beta = \
+                self.initial_game_state(
+                    init_pattern_alpha=self.inargs.init_board_pattern, 
+                    init_pattern_beta=self.inargs.init_board_pattern)
+            #update initial fuel score and score
+            self.game_state[U.P1][U.SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on goal sector and fuel points
+            self.game_state[U.P1][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P1) #Score track based on fuel remaining
+            self.game_state[U.P2][U.SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on goal sector and fuel points
+            self.game_state[U.P2][U.FUEL_SCORE] = self.get_fuel_points(player_id=U.P2) #Score track based on fuel remaining
 
     def terminate_game(self):
         ''' set game to done and return difference in score as reward
@@ -235,6 +256,133 @@ class KOTHGame:
                         role=U.BLUDGER, 
                         position=self.board_grid.get_relative_azimuth_sector(p2_hill, rel_azim))
                 n_tokens_beta += 1
+
+
+        game_state[U.P1][U.TOKEN_STATES] = p1_state
+        game_state[U.P1][U.SCORE] = 0 #Score track based on goal sector and fuel points
+        game_state[U.P1][U.FUEL_SCORE] = 0 #Score track based on fuel remaining
+        game_state[U.P2][U.TOKEN_STATES] = p2_state
+        game_state[U.P2][U.SCORE] = 0 #Score track based on goal sector and fuel points
+        game_state[U.P2][U.FUEL_SCORE] = 0 #Score track based on fuel remaining
+        game_state[U.TURN_COUNT] = 0
+        game_state[U.GAME_DONE] = False
+        game_state[U.TURN_PHASE] = U.MOVEMENT
+
+        # update token adjacency graph
+        game_state[U.TOKEN_ADJACENCY] = get_token_adjacency_graph(self.board_grid, token_catalog)
+
+        # update legal actions
+        game_state[U.LEGAL_ACTIONS] = get_legal_verbose_actions(
+            turn_phase=game_state[U.TURN_PHASE],
+            token_catalog=token_catalog,
+            board_grid=self.board_grid,
+            token_adjacency_graph=game_state[U.TOKEN_ADJACENCY],
+            min_ring=self.inargs.min_ring,
+            max_ring=self.inargs.max_ring)
+
+        return game_state, token_catalog, n_tokens_alpha, n_tokens_beta
+    
+    def initial_game_state_asymmetric(self, 
+        init_pattern_alpha: List, 
+        init_pattern_beta: List) -> Tuple:
+        ''' returns initial board configuration of pieces 
+
+        Args:
+            init_pattern_alpha (List): list of tuples for player alpha, 
+                [0] is position relative to "hill", [1] is number of tokens to place there
+            init_pattern_beta (List): list of tuples for player beta, 
+                [0] is position relative to "hill", [1] is number of tokens to place there
+            
+        Returns:
+            game_state (Dict): state of game and tokens within game
+            token_catalog (Dict): token states with token names as keys
+            n_token_alpha (int): number of tokens for player alpha
+            n_token_beta (int): number of tokens for player beta 
+        '''
+        import orbit_defender2d.king_of_the_hill.asymmetric_game_parameters as AGP
+
+        game_state = {U.P1:dict(), U.P2:dict()}
+        token_catalog = OrderedDict()
+        
+        # Specify goal locations (i.e. "hills") in geo 180 degrees offset
+        n_sectors_in_geo = self.board_grid.get_num_sectors_in_ring(self.inargs.geo_ring)
+        goal1_azim = 0
+        goal2_azim = n_sectors_in_geo//2
+        p1_hill = self.board_grid.sector_coord2num(self.inargs.geo_ring, goal1_azim)
+        game_state[U.GOAL1] = p1_hill
+        p2_hill = self.board_grid.sector_coord2num(self.inargs.geo_ring, goal2_azim)
+        game_state[U.GOAL2] = p2_hill
+
+        #Check the numbers of pieces
+        n_sats_P1 = sum([a[1] for a in init_pattern_alpha])
+        n_sats_P2 = sum([a[1] for a in init_pattern_beta])
+        assert n_sats_P1 == n_sats_P2
+        n_sats_AGP1 = sum([a[1] for a in AGP.INIT_BOARD_PATTERN_P1])
+        n_sats_AGP2 = sum([a[1] for a in AGP.INIT_BOARD_PATTERN_P2])
+
+        if n_sats_P1 < n_sats_AGP1 or n_sats_P2 < n_sats_AGP2:
+            raise ValueError("There are more satellites in AGP.INIT_BOARD_PATTERN_P1 or AGP.INIT_BOARD_PATTERN_P2 than in self.inargs.init_board_pattern")
+
+        removed_sat_count_P1 = n_sats_P1 - n_sats_AGP1
+        removed_sat_count_P2 = n_sats_P2 - n_sats_AGP2
+
+        # Populate the seeker pieces at team target sectors (hills)
+        p1_state = [None]
+        p1_state[0] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + '0'] = \
+            KOTHTokenState(
+                Satellite(fuel=AGP.INIT_FUEL_P1[U.SEEKER], ammo=AGP.INIT_AMMO_P1[U.SEEKER]), 
+                role=U.SEEKER, 
+                position=p1_hill)
+        n_tokens_alpha = 1
+
+        p2_state = [None]
+        p2_state[0] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + '0'] = \
+            KOTHTokenState(
+                Satellite(fuel=AGP.INIT_FUEL_P2[U.SEEKER], ammo=AGP.INIT_AMMO_P2[U.SEEKER]), 
+                role=U.SEEKER, 
+                position=p2_hill)
+        n_tokens_beta = 1
+
+        # Populate team bludger pieces based on init_pattern relative to target sectors (hills)
+        for idx, init_val in enumerate(AGP.INIT_BOARD_PATTERN_P1):
+            rel_azim, n_sats = init_val
+            for sat_i in range(n_sats):
+                p1_state.append(None)
+                p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
+                    KOTHTokenState(
+                        Satellite(fuel=AGP.INIT_FUEL_P1[U.BLUDGER], ammo=AGP.INIT_AMMO_P1[U.BLUDGER]), 
+                        role=U.BLUDGER, 
+                        position=self.board_grid.get_relative_azimuth_sector(p1_hill, rel_azim))
+                n_tokens_alpha += 1
+
+        for init_val in AGP.INIT_BOARD_PATTERN_P2:
+            rel_azim, n_sats = init_val
+            for sat_i in range(n_sats):
+                p2_state.append(None)
+                p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
+                    KOTHTokenState(
+                        Satellite(fuel=AGP.INIT_FUEL_P2[U.BLUDGER], ammo=AGP.INIT_AMMO_P2[U.BLUDGER]), 
+                        role=U.BLUDGER, 
+                        position=self.board_grid.get_relative_azimuth_sector(p2_hill, rel_azim))
+                n_tokens_beta += 1
+
+        # Create the 'removed' sats as satellites in position 0 with 0 fuel and ammo.
+        for sat_i in range(removed_sat_count_P1):
+            p1_state.append(None)
+            p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
+                KOTHTokenState(
+                    Satellite(fuel=0, ammo=0), 
+                    role=U.BLUDGER, 
+                    position=0)
+            n_tokens_alpha += 1
+        for sat_i in range(removed_sat_count_P2):
+            p2_state.append(None)
+            p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
+                KOTHTokenState(
+                    Satellite(fuel=0, ammo=0), 
+                    role=U.BLUDGER, 
+                    position=0)
+            n_tokens_beta += 1
 
 
         game_state[U.P1][U.TOKEN_STATES] = p1_state
@@ -580,6 +728,7 @@ class KOTHGame:
                 # insufficient fuel, leave fuel as is and
                 # set action to noop movement
                 #self.token_catalog[token_name].satellite.fuel = self.inargs.min_fuel #This was to take all remaining fuel away then still set action to noop. I will instead leave fuel as is and stop the action from happening.
+                # If the fuel begins as zero, then it will always be below min_fuel and the action will always be noop. This is used for tokens remvoved from the game.
                 fuel_constrained_actions[token_name] = min_fuel_action_tuple
             else:
                 # sufficient fuel, decrement fuel and copy action
@@ -763,10 +912,12 @@ class KOTHGame:
             if token_name.startswith(player_id):
                 #if token is a seeker then add the fuel points to the total
                 if token_state.role == U.SEEKER:
-                    fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor
+                    if token_state.satellite.fuel > 0: #Only add fuel points if the token has fuel, otherwise it is out of the game and should not be counted
+                        fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor
                 #if token is a bludger then add the fuel points to the total with fuel_points_bludger_factor (hard code as 0.1 for now should add this to inargs later)
                 elif token_state.role == U.BLUDGER:
-                    fuel_points += token_state.satellite.fuel * U.BLUDGER_FUEL_POINTS_FACTOR
+                    if token_state.satellite.fuel > 0: #Only add fuel points if the token has fuel, otherwise it is out of the game and should not be counted
+                        fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor_bludger
         return int(np.floor(fuel_points))
 
     def get_random_valid_actions(self) -> Dict:
@@ -1151,7 +1302,8 @@ def print_game_info(game, file=None):
     #     print("-->{} | fuel: {} | position: {}".format(tok.satellite.fuel, tok.position))
     print("STATES:", file=file)
     for toknm, tok in game.token_catalog.items():
-        print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(toknm, tok.position, tok.satellite.fuel), file=file)
+        if tok.satellite.fuel >= 0 and tok.position > 0:
+            print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(toknm, tok.position, tok.satellite.fuel), file=file)
     #print("alpha|beta score: {}|{}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]))
 
 def print_scores(game, file=None):

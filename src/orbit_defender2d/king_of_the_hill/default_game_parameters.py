@@ -8,7 +8,16 @@
 # Note: a change to any of these params implies a change to the gym environment
 # version number
 
+# If playing an asymmetric game, then set ASYMMETRIC_GAME to True
+# In an aymmetric game, this file must have the largest values to be expected in the following parameters:
+    # All board parameters (MAX_RING, MIN_RING, GEO_RING, NUM_SPACES, INIT_BOARD_PATTERN, NUM_TOKENS_PER_PLAYER)
+    # Initial ammo and fuel (INIT_FUEL, INIT_AMMO)
+# If using or training an AI, pettingzoo_env.py will use the values in this file to set the observation and action space sizes.
+# After the game is initialized, the game will read in and set asymmetric palyer values based on another file called asymmetric_game_parameters.py
+
 import orbit_defender2d.utils.utils as U
+
+ASYMMETRIC_FLAG = True
 
 # board sizing
 MAX_RING = 5

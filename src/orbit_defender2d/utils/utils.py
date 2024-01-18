@@ -28,8 +28,6 @@ INVALID_ACTION = 'invalid_action'
 # TCP_PORT = 'tcp_port'
 # JSON_PROPERTY_NAMES = [JSON_ENG_RES_SEQ] = ['engagementResolutionSequence']
 
-#### SHOULD MOVE THIS TO DGP AND ADD TO KOTH INARGS ######
-BLUDGER_FUEL_POINTS_FACTOR = 0.1
 
 MovementTuple = namedtuple('MovementTuple', ['action_type'])
 EngagementTuple = namedtuple('EngagementTuple', ['action_type', 'target', 'prob'])

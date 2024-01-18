@@ -52,7 +52,9 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
     adj_goal_points=DGP.ADJ_GOAL_POINTS,
     fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
     win_score=DGP.WIN_SCORE,
-    max_turns=DGP.MAX_TURNS)
+    max_turns=DGP.MAX_TURNS,
+    fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    asymmetric_flag=DGP.ASYMMETRIC_FLAG,)
 
 # observation space flat encoding
 # Note: hard-coding and then cross checking in order
@@ -584,6 +586,8 @@ class parallel_env(ParallelEnv):
 
         # display details of each token
         for token_name, token_state in self.kothgame.token_catalog.items():
+            if token_state.position == 0: #If token is in the center, don't display it
+                continue
             # determine token player (influences color and horizontal alignment)
             split_name = token_name.split(':')
             if split_name[0] == "alpha":
@@ -894,6 +898,9 @@ class parallel_env(ParallelEnv):
         b_font_size = self._large_font.size(' ')
         # store counts of necessary token types to track occupancy of each sector
         for token_name, token_state in self.kothgame.token_catalog.items():
+            if token_state.position == 0: #If token is in the center, don't display it. This is used for asymmetric game.
+                continue
+
             split_name = token_name.split(':')
 
             # initialize dictionaries for new sectors
@@ -1521,8 +1528,11 @@ class parallel_env(ParallelEnv):
         assert self.obs_space_info.flat_per_token_components.position.contains(flat_obs_position)
 
         # encode fuel, verify against obs_space_info
-        obs_fuel = get_non_negative_binary_observation(self.kothgame.token_catalog[token_id].satellite.fuel,
-                                                       N_BITS_OBS_FUEL)
+        if self.kothgame.token_catalog[token_id].satellite.fuel < 0:
+            tmp_fuel = 0
+        else:
+            tmp_fuel = self.kothgame.token_catalog[token_id].satellite.fuel
+        obs_fuel = get_non_negative_binary_observation(tmp_fuel, N_BITS_OBS_FUEL)
         flat_obs_fuel = spaces.flatten(self.obs_space_info.per_token_components.fuel, obs_fuel)
         assert self.obs_space_info.per_token_components.fuel.contains(obs_fuel), "obs_fuel: {}".format(obs_fuel)
         assert self.obs_space_info.flat_per_token_components.fuel.contains(flat_obs_fuel)
@@ -2101,8 +2111,8 @@ class KOTHActionSpaces:
         '''
 
         # enforce identical action spaces
-        if game.n_tokens_alpha != game.n_tokens_beta:
-            raise NotImplementedError('Both players must have same number of tokens')
+        #if game.n_tokens_alpha != game.n_tokens_beta:
+        #    raise NotImplementedError('Both players must have same number of tokens')
         self.n_tokens_per_player = game.n_tokens_alpha
 
         # create list of actions that maps index to discrete gym action
