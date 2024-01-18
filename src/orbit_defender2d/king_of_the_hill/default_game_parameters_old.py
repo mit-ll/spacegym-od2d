@@ -14,7 +14,12 @@ import orbit_defender2d.utils.utils as U
 MAX_RING = 5
 MIN_RING = 1
 GEO_RING = 4
-NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING) #Get the number of spaces in the board (not including the center) note differnt if min ring is 1 or higher... change here instead of in PZE env
+if MIN_RING == 1:
+    NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING) #Get the number of spaces in the board (not including the center)
+elif MIN_RING > 1:
+    NUM_SPACES = 2**(MAX_RING + 1) -2**(MIN_RING - 1) #Get the number of spaces in the board (not including the center)
+else:
+    raise ValueError("MIN_RING must be >= 1")
 
 # initial token placement and attributes
 INIT_BOARD_PATTERN = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
@@ -34,33 +39,33 @@ INIT_AMMO = {
 MIN_FUEL = 0.0
 FUEL_USAGE = {
     U.NOOP: 0.0,
-    U.DRIFT: 1.0,
-    U.PROGRADE: 5.0,
-    U.RETROGRADE: 10.0,
-    U.RADIAL_IN: 1.0,
-    U.RADIAL_OUT: 1.0,
+    U.DRIFT: 1.0, #Essentially the cost of station keeping
+    U.PROGRADE: 5.0, #make this lower than radial in/out was 10
+    U.RETROGRADE: 5.0,
+    U.RADIAL_IN: 10.0, #These should be higher, probably 10, was 5
+    U.RADIAL_OUT: 10.0,
     U.IN_SEC:{
         U.SHOOT: 5.0,
         U.COLLIDE: 20.0,
-        U.GUARD: 20.0
+        U.GUARD: 5.0
     },
     U.ADJ_SEC:{
-        U.SHOOT: 5.0,
-        U.COLLIDE: 30.0,
-        U.GUARD: 30.0
+        U.SHOOT: 7.0, #increased from 5
+        U.COLLIDE: 30.0, #Should be higher, was 20
+        U.GUARD: 10.0
     }
 }
 ENGAGE_PROBS = {
     U.IN_SEC:{
         U.NOOP: 1.0,
-        U.SHOOT: 0.7,
+        U.SHOOT: 0.7, 
         U.COLLIDE: 0.8,
         U.GUARD: 0.9},
     U.ADJ_SEC:{
         U.NOOP: 1.0,
-        U.SHOOT: 0.5,
-        U.COLLIDE: 0.7,
-        U.GUARD: 0.8
+        U.SHOOT: 0.3, #These should be lower, maybe 0.3,0.4,0.5
+        U.COLLIDE: 0.4,
+        U.GUARD: 0.5
     }
 }
 
@@ -70,7 +75,7 @@ IN_GOAL_POINTS = 3.0
 ADJ_GOAL_POINTS = 1.0
 FUEL_POINTS_FACTOR = 1.0
 WIN_SCORE = 100.0
-MAX_TURNS = 100
+MAX_TURNS = 50 #reduced from 100 to 50
 
 # Derived parameters
 # NOTE: don't do this! any derived params should be member variables! otherwise
