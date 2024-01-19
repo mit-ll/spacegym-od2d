@@ -518,19 +518,39 @@ class KOTHGame:
         Returns:
             prob (float): probability of engagement success
         '''
+        import orbit_defender2d.king_of_the_hill.asymmetric_game_parameters as AGP
+        #TODO: Add asymmetric engagement probabilities here based on AGP values
+        #This function is the only way to get the engagement probabilities, so it should be the only place that the asymmetries are applied to the engagement probabilities.
+        # Also, make sure this function is always called when creating engagement touples that will be passed to resolve_engagements
 
         prob = 0.0
 
-        # check if adjacent, return 0 otherwise
-        if engagement_type == U.NOOP:
-            prob = self.inargs.engage_probs[U.IN_SEC][U.NOOP]
-        elif self.game_state[U.TOKEN_ADJACENCY].has_edge(token_id,target_id):
-            if self.token_catalog[token_id].position == self.token_catalog[target_id].position:
-                prob = self.inargs.engage_probs[U.IN_SEC][engagement_type]
-            else:
-                prob = self.inargs.engage_probs[U.ADJ_SEC][engagement_type]
-            
-        return prob
+        if self.inargs.asymmetric_flag:
+            # check if adjacent, return 0 otherwise
+            if engagement_type == U.NOOP:
+                prob = self.inargs.engage_probs[U.IN_SEC][U.NOOP]
+            elif self.game_state[U.TOKEN_ADJACENCY].has_edge(token_id,target_id):
+                if self.token_catalog[token_id].position == self.token_catalog[target_id].position:
+                    if token_id.split(U.TOKEN_DELIMITER)[0] == U.P1:
+                        prob = AGP.ENGAGE_PROBS_P1[U.IN_SEC][engagement_type]
+                    else:
+                        prob = AGP.ENGAGE_PROBS_P2[U.IN_SEC][engagement_type]
+                else:
+                    if token_id.split(U.TOKEN_DELIMITER)[0] == U.P1:
+                        prob = AGP.ENGAGE_PROBS_P1[U.ADJ_SEC][engagement_type]
+                    else:
+                        prob = AGP.ENGAGE_PROBS_P2[U.ADJ_SEC][engagement_type]                
+            return prob
+        else:
+           # check if adjacent, return 0 otherwise
+            if engagement_type == U.NOOP:
+                prob = self.inargs.engage_probs[U.IN_SEC][U.NOOP]
+            elif self.game_state[U.TOKEN_ADJACENCY].has_edge(token_id,target_id):
+                if self.token_catalog[token_id].position == self.token_catalog[target_id].position:
+                    prob = self.inargs.engage_probs[U.IN_SEC][engagement_type]
+                else:
+                    prob = self.inargs.engage_probs[U.ADJ_SEC][engagement_type]
+            return prob
 
     def update_token_adjacency_graph(self):
         self.game_state[U.TOKEN_ADJACENCY] = get_token_adjacency_graph(self.board_grid, self.token_catalog)
@@ -907,18 +927,38 @@ class KOTHGame:
 
     def get_fuel_points(self, player_id):
         '''convert fuel remaining in all tokens to points'''
+        import orbit_defender2d.king_of_the_hill.asymmetric_game_parameters as AGP
         fuel_points = 0
-        for token_name, token_state in self.token_catalog.items():
-            if token_name.startswith(player_id):
-                #if token is a seeker then add the fuel points to the total
-                if token_state.role == U.SEEKER:
-                    if token_state.satellite.fuel > 0: #Only add fuel points if the token has fuel, otherwise it is out of the game and should not be counted
-                        fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor
-                #if token is a bludger then add the fuel points to the total with fuel_points_bludger_factor (hard code as 0.1 for now should add this to inargs later)
-                elif token_state.role == U.BLUDGER:
-                    if token_state.satellite.fuel > 0: #Only add fuel points if the token has fuel, otherwise it is out of the game and should not be counted
-                        fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor_bludger
-        return int(np.floor(fuel_points))
+        if not self.inargs.asymmetric_flag:
+            for token_name, token_state in self.token_catalog.items():
+                if token_name.startswith(player_id):
+                    #if token is a seeker then add the fuel points to the total
+                    if token_state.role == U.SEEKER:
+                        if token_state.satellite.fuel > 0: #Only add fuel points if the token has fuel, otherwise it is out of the game and should not be counted
+                            fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor
+                    #if token is a bludger then add the fuel points to the total with fuel_points_bludger_factor (hard code as 0.1 for now should add this to inargs later)
+                    elif token_state.role == U.BLUDGER:
+                        if token_state.satellite.fuel > 0: #Only add fuel points if the token has fuel, otherwise it is out of the game and should not be counted
+                            fuel_points += token_state.satellite.fuel * self.inargs.fuel_points_factor_bludger
+            return int(np.floor(fuel_points))
+        else:
+            for token_name, token_state in self.token_catalog.items():
+                if token_name.startswith(player_id):
+                    #if token is a seeker then add the fuel points to the total
+                    if token_state.role == U.SEEKER:
+                        if token_state.satellite.fuel > 0:
+                            if player_id == U.P1:
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P1[U.SEEKER]
+                            else:
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P2[U.SEEKER]
+                    #if token is a bludger then add the fuel points to the total with fuel_points_bludger_factor (hard code as 0.1 for now should add this to inargs later)
+                    elif token_state.role == U.BLUDGER:
+                        if token_state.satellite.fuel > 0:
+                            if player_id == U.P1:
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P1[U.BLUDGER]
+                            else:
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P2[U.BLUDGER]
+            return int(np.floor(fuel_points))
 
     def get_random_valid_actions(self) -> Dict:
         '''create a random-yet-valid action for each token
