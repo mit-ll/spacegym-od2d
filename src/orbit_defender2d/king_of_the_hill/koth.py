@@ -948,16 +948,16 @@ class KOTHGame:
                     if token_state.role == U.SEEKER:
                         if token_state.satellite.fuel > 0:
                             if player_id == U.P1:
-                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P1[U.SEEKER]
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P1
                             else:
-                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P2[U.SEEKER]
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P2
                     #if token is a bludger then add the fuel points to the total with fuel_points_bludger_factor (hard code as 0.1 for now should add this to inargs later)
                     elif token_state.role == U.BLUDGER:
                         if token_state.satellite.fuel > 0:
                             if player_id == U.P1:
-                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P1[U.BLUDGER]
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_BLUDGER_P1
                             else:
-                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_P2[U.BLUDGER]
+                                fuel_points += token_state.satellite.fuel * AGP.FUEL_POINTS_FACTOR_BLUDGER_P2
             return int(np.floor(fuel_points))
 
     def get_random_valid_actions(self) -> Dict:
