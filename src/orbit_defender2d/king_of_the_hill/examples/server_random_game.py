@@ -16,20 +16,26 @@ from orbit_defender2d.king_of_the_hill.examples.server_utils import \
     assert_valid_game_state, print_game_info
 from numpy.random import choice
 
-DEFAULT_PARAMS_PARTIAL = {
-    'init_fuel' : DGP.INIT_FUEL,
-    'init_ammo' : DGP.INIT_AMMO,
-    'min_fuel' : DGP.MIN_FUEL,
-    'fuel_usage' : DGP.FUEL_USAGE,
-    'engage_probs' : DGP.ENGAGE_PROBS,
-    'illegal_action_score' : DGP.ILLEGAL_ACT_SCORE,
-    'in_goal_points' : DGP.IN_GOAL_POINTS,
-    'adj_goal_points' : DGP.ADJ_GOAL_POINTS,
-    'fuel_points_factor': DGP.FUEL_POINTS_FACTOR,
-    'win_score' : DGP.WIN_SCORE,
-    'max_turns' : DGP.MAX_TURNS}
+GAME_PARAMS = koth.KOTHGameInputArgs(
+    max_ring=DGP.MAX_RING,
+    min_ring=DGP.MIN_RING,
+    geo_ring=DGP.GEO_RING,
+    init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+    init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
+    init_fuel=DGP.INIT_FUEL,
+    init_ammo=DGP.INIT_AMMO,
+    min_fuel=DGP.MIN_FUEL,
+    fuel_usage=DGP.FUEL_USAGE,
+    engage_probs=DGP.ENGAGE_PROBS,
+    illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
+    in_goal_points=DGP.IN_GOAL_POINTS,
+    adj_goal_points=DGP.ADJ_GOAL_POINTS,
+    fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
+    win_score=DGP.WIN_SCORE,
+    max_turns=DGP.MAX_TURNS,
+    fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    )
 
-INIT_BOARD_PATTERN_2 = [(0,1)]
 PORT_NUM = 5555
 API_VER_NUM = 'v2021.11.18.0000.1p'
 
@@ -81,12 +87,7 @@ def print_actions(req_actions):
 def run_server_random_game():
 
     # create game object
-    game = koth.KOTHGame(
-        max_ring=5, 
-        min_ring=1, 
-        geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
-        **DEFAULT_PARAMS_PARTIAL)
+    game = koth.KOTHGame(**GAME_PARAMS._asdict())
 
     # create game server
     game_server = GS.SingleUserGameServer(game, comm_configs={GS.TCP_PORT: PORT_NUM})

@@ -23,21 +23,24 @@ ECHO_REQ_MSG_0 = {'context': 'echo', 'data': {'key0': 'value0'}}
 
 # Game Parameters
 GAME_PARAMS = koth.KOTHGameInputArgs(
-    max_ring = DGP.MAX_RING,
-    min_ring = DGP.MIN_RING,
-    geo_ring = DGP.GEO_RING,
-    init_board_pattern = DGP.INIT_BOARD_PATTERN,
-    init_fuel = DGP.INIT_FUEL,
-    init_ammo = DGP.INIT_AMMO,
-    min_fuel = DGP.MIN_FUEL,
-    fuel_usage = DGP.FUEL_USAGE,
-    engage_probs = DGP.ENGAGE_PROBS,
-    illegal_action_score = DGP.ILLEGAL_ACT_SCORE,
-    in_goal_points = DGP.IN_GOAL_POINTS,
-    adj_goal_points = DGP.ADJ_GOAL_POINTS,
-    fuel_points_factor = DGP.FUEL_POINTS_FACTOR,
-    win_score = DGP.WIN_SCORE,
-    max_turns = DGP.MAX_TURNS)
+    max_ring=DGP.MAX_RING,
+    min_ring=DGP.MIN_RING,
+    geo_ring=DGP.GEO_RING,
+    init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+    init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
+    init_fuel=DGP.INIT_FUEL,
+    init_ammo=DGP.INIT_AMMO,
+    min_fuel=DGP.MIN_FUEL,
+    fuel_usage=DGP.FUEL_USAGE,
+    engage_probs=DGP.ENGAGE_PROBS,
+    illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
+    in_goal_points=DGP.IN_GOAL_POINTS,
+    adj_goal_points=DGP.ADJ_GOAL_POINTS,
+    fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
+    win_score=DGP.WIN_SCORE,
+    max_turns=DGP.MAX_TURNS,
+    fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    )
 
 class PlayerClient(object):
     '''bundles REQ and SUB sockets in one object'''

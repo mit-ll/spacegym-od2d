@@ -41,7 +41,8 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
     max_ring=DGP.MAX_RING,
     min_ring=DGP.MIN_RING,
     geo_ring=DGP.GEO_RING,
-    init_board_pattern=DGP.INIT_BOARD_PATTERN,
+    init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+    init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
     init_fuel=DGP.INIT_FUEL,
     init_ammo=DGP.INIT_AMMO,
     min_fuel=DGP.MIN_FUEL,
@@ -54,7 +55,7 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
     win_score=DGP.WIN_SCORE,
     max_turns=DGP.MAX_TURNS,
     fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
-    asymmetric_flag=DGP.ASYMMETRIC_FLAG,)
+    )
 
 # observation space flat encoding
 # Note: hard-coding and then cross checking in order
@@ -69,28 +70,32 @@ N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
 N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
 N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
 N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
-N_BITS_OBS_AMMO = len(U.int2bitlist(int(max(DGP.INIT_AMMO[U.SEEKER],DGP.INIT_AMMO[U.BLUDGER]))))  # assumes max ammo of 1 -> 1 bit binary
+N_BITS_OBS_AMMO = len(U.int2bitlist(int(max(DGP.INIT_AMMO[U.P1][U.SEEKER],DGP.INIT_AMMO[U.P2][U.BLUDGER]))))  # assumes max ammo of 1 -> 1 bit binary
 N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
 #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
-N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(DGP.NUM_TOKENS_PER_PLAYER) #number of tokens per player * bits per token
+N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2])) #number of tokens per player * bits per token
 N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
 # cross-check hard-coded bit sizes with variables upon which they depend
 assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
 assert N_BITS_OBS_POSITION == int(DGP.NUM_SPACES)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
 assert N_BITS_OBS_FUEL == max(
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.BLUDGER]))))
+    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.SEEKER]))),
+    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.BLUDGER]))),
+    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.SEEKER]))),
+    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.BLUDGER]))))
 assert N_BITS_OBS_AMMO == max(
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.BLUDGER]))))
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))))
 assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
 
 # action space flat encoding
 # Note: hard-coding and then cross checking in order
 # to avoid inadvertent observation space dimension changes
-N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*DGP.NUM_TOKENS_PER_PLAYER  #should be movement types + engagement types*tokens per player
-N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(DGP.NUM_TOKENS_PER_PLAYER) #should be tokens per player * bits per token action
+N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2]))  #should be movement types + engagement types*tokens per player
+N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2])) #should be tokens per player * bits per token action
 
 def env(rllib_env_config=None):
     '''
@@ -1947,7 +1952,7 @@ class parallel_env(ParallelEnv):
                 decoded_act = U.EngagementTuple(
                     action_type=act_type,
                     target=token_id,
-                    prob=self.kothgame.inargs.engage_probs[U.IN_SEC][U.NOOP])
+                    prob=self.kothgame.inargs.engage_probs[U.P1][U.IN_SEC][U.NOOP]) #Technically should check p1 or p2, but NOOP will always be 1.0 prop anyways.
             else:
                 raise ValueError("Unexpected turn phase: {}".format(self.kothgame.game_state[U.TURN_PHASE]))
 
@@ -2200,7 +2205,7 @@ class KOTHObservationSpaces:
         turn_count = spaces.MultiBinary(len(U.int2bitlist(game.inargs.max_turns)))
         ownership = spaces.MultiBinary(1)
         score = spaces.MultiBinary(max(
-            len(U.int2bitlist(int(game.inargs.win_score))),
+            len(U.int2bitlist(int(max(game.inargs.win_score[U.P1],game.inargs.win_score[U.P2])))),
             1 + len(U.int2bitlist(int(abs(game.inargs.illegal_action_score))))
         ))
         score = spaces.Tuple((ownership, score))
@@ -2222,11 +2227,15 @@ class KOTHObservationSpaces:
             role=spaces.Discrete(len(U.PIECE_ROLES)),
             position=spaces.Discrete(game.board_grid.n_sectors),
             fuel=spaces.MultiBinary(max(
-                len(U.int2bitlist(int(game.inargs.init_fuel[U.SEEKER]))),
-                len(U.int2bitlist(int(game.inargs.init_fuel[U.BLUDGER]))))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P1][U.SEEKER]))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P1][U.BLUDGER]))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P2][U.SEEKER]))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P2][U.BLUDGER]))))),
             ammo=spaces.MultiBinary(max(
-                len(U.int2bitlist(game.inargs.init_ammo[U.SEEKER])),
-                len(U.int2bitlist(game.inargs.init_ammo[U.BLUDGER]))))
+                len(U.int2bitlist(game.inargs.init_ammo[U.P1][U.SEEKER])),
+                len(U.int2bitlist(game.inargs.init_ammo[U.P1][U.BLUDGER])),
+                len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.SEEKER])),
+                len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.BLUDGER]))))
         )
 
         # flattened observation of single token (1D vector normalized elements to range [0,1])
