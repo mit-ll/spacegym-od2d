@@ -12,7 +12,8 @@
 # If using or training an AI, pettingzoo_env.py will use the values in this file to set the observation and action space sizes.
 # After the game is initialized, the game will read in and set asymmetric palyer values based on another file called asymmetric_game_parameters.py
 
-#TODO: Reamining to implement in KOTH.py, asymmetric fuel usage, goal points. Fuel usge may not be important since we can set the initial fuel. 
+#TODO: Reamining to implement in KOTH.py, asymmetric fuel usage. Fuel usge may not be important since we can set the initial fuel. 
+#TODO: Get rid of the need for the asymmetric_game_parameters.py file and instead put all of this info into the default_game_parameters.py file and adjust inargs to simply include all the different player parameters.
 
 import orbit_defender2d.utils.utils as U
 
