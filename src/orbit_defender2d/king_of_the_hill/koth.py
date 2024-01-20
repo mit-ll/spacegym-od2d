@@ -870,6 +870,18 @@ class KOTHGame:
             alpha_points (float): points scored by alpha player
             beta_points (float): points scored by beta player
         '''
+        import orbit_defender2d.king_of_the_hill.asymmetric_game_parameters as AGP
+
+        if self.inargs.asymmetric_flag:
+            alpha_goal_points_sec = AGP.IN_GOAL_POINTS_P1
+            alpha_goal_points_adj_secs = AGP.ADJ_GOAL_POINTS_P1
+            beta_goal_points_sec = AGP.IN_GOAL_POINTS_P2
+            beta_goal_points_adj_secs = AGP.ADJ_GOAL_POINTS_P2
+        else:
+            alpha_goal_points_sec = self.inargs.in_goal_points
+            alpha_goal_points_adj_secs = self.inargs.adj_goal_points
+            beta_goal_points_sec = self.inargs.in_goal_points
+            beta_goal_points_adj_secs = self.inargs.adj_goal_points
 
         # evaluate goal-adjacent sectors
         alpha_goal_sec = self.game_state[U.GOAL1]
@@ -888,14 +900,14 @@ class KOTHGame:
         beta_points = 0
         for aseek in alpha_seeker_secs:
             if aseek == alpha_goal_sec:
-                alpha_points += self.inargs.in_goal_points
+                alpha_points += alpha_goal_points_sec
             elif aseek in alpha_goal_adj_secs:
-                alpha_points += self.inargs.adj_goal_points
+                alpha_points += alpha_goal_points_adj_secs
         for bseek in beta_seeker_secs:
             if bseek == beta_goal_sec:
-                beta_points += self.inargs.in_goal_points
+                beta_points += beta_goal_points_sec
             elif bseek in beta_goal_adj_secs:
-                beta_points += self.inargs.adj_goal_points
+                beta_points += beta_goal_points_adj_secs
 
         return alpha_points, beta_points
 

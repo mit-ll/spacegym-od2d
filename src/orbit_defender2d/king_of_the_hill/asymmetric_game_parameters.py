@@ -71,7 +71,7 @@ INIT_BOARD_PATTERN_P2 = [(-20,0), (-1,0), (0,2), (1,3), (2,0)] # (relative azim,
 NUM_TOKENS_P2 = sum([a[1] for a in INIT_BOARD_PATTERN_P2])+1 #Get the number of tokens per player, plus 1 for the seeker
 INIT_FUEL_P2 = {
     U.SEEKER:   100.0,
-    U.BLUDGER:  50.0,
+    U.BLUDGER:  100.0,
 }
 INIT_AMMO_P2 = {
     U.SEEKER:   0,
@@ -112,4 +112,4 @@ ENGAGE_PROBS_P2 = {
 IN_GOAL_POINTS_P2 = 10.0
 ADJ_GOAL_POINTS_P2 = 3.0
 FUEL_POINTS_FACTOR_P2 = 1.0
-FUEL_POINTS_FACTOR_BLUDGER_P2 = 0.1
+FUEL_POINTS_FACTOR_BLUDGER_P2 = 0.2
