@@ -81,6 +81,25 @@ Note that `test_game_server.py` can sometimes fail if too many processes are run
 pytest . --ignore=tests/test_game_server.py # run all tests except game server
 pytest tests/test_game_server.py            # run game server tests
 ```
+------------
+
+## How to Start the Game
+
+For more details, please see the [__Game Rules Wiki__](https://github.com/mit-ll/spacegym-od2d/wiki/Game-Rules) and access the User Guide. 
+
+1. In a terminal window, navigate to your src folder inside the od2d_learn folder from the GitHub repository. 
+2. Activate od2d_learn by typing the following command: 
+
+```bash
+conda activate od2d_learn
+```
+Next to your user ID in the terminal, it should now say “od2d_learn” instead of "base". 
+
+3. Use python to start the game file that you are choosing to run. Please reference the User Guide for a comprehensive list of file names. The following command will run a Human v. AI game. 
+
+```bash
+python koth_game_rollout_CLI.py
+```
 
 ------------
 
