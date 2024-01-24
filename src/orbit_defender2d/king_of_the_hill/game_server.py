@@ -954,3 +954,100 @@ class SingleUserGameServer(GameServer):
         self.game.apply_verbose_actions(actions=actions)
 
         return self.get_game_state()
+
+
+##### Game Server Utility functions #####
+
+def assert_valid_game_state(game_state):
+    '''check response from game server gives valid game state
+    '''
+    
+    # turn counter
+    assert isinstance(game_state[TURN_NUMBER], int)
+    assert game_state[TURN_NUMBER] >= 0
+
+    # turn phase
+    assert game_state[TURN_PHASE] in U.TURN_PHASE_LIST
+
+    # game done
+    assert isinstance(game_state[GAME_DONE], bool)
+
+    # goal positions
+    assert isinstance(game_state[GOAL_ALPHA], int)
+    # assert 0 < game_state[GS.GOAL_ALPHA] <= game_board.n_sectors
+    assert isinstance(game_state[GOAL_BETA], int)
+    # assert 0 < game_state[GS.GOAL_BETA] <= game_board.n_sectors
+
+def print_game_info(game_state):
+    '''
+    Print the game state information from the game server.
+    This is the game server version of game state, so not compatible with the kothgame game state.
+    '''
+    print("STATES:")
+    for tok in game_state[TOKEN_STATES]:
+        print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(tok[PIECE_ID], tok[POSITION], tok[FUEL]))
+    print("alpha|beta score: {}|{}".format(game_state[SCORE_ALPHA],game_state[SCORE_BETA]))
+
+def print_engagement_outcomes_list(engagement_outcomes):
+    '''
+    The engagement outcomes from the game server are a list of dicts instead of a list of named tuples like the kothgame engagement outcomes.
+    See print_engagement_outcomes in koth.py for the kothgame version.
+    '''
+    print("ENGAGEMENT OUTCOMES:")
+    # if engagement_outcomes is empty print No engagements
+    if not engagement_outcomes:
+        print("    No engagements")
+    else:
+        # print the engagement outcomes for guarding actions first
+        print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format("Action", "Attacker", "Guardian", "Target", "Result"))
+        for egout in engagement_outcomes:
+            success_status = "Success" if egout[SUCCESS] else "Failure"
+            if egout[ACTION_TYPE] == U.SHOOT or egout[ACTION_TYPE] == U.COLLIDE:
+                print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                    egout[ACTION_TYPE], egout[ATTACKER_ID], "", egout[TARGET_ID], success_status))
+            elif egout[ACTION_TYPE] == U.GUARD:
+                if isinstance(egout[ATTACKER_ID], str):
+                    print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                        egout[ACTION_TYPE], egout[ATTACKER_ID], egout[GUARDIAN_ID], egout[TARGET_ID], success_status))
+                else:
+                    print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                        egout[ACTION_TYPE], "", egout[GUARDIAN_ID], egout[TARGET_ID], success_status))
+            elif egout[ACTION_TYPE] == U.NOOP:
+                print("NOOP")
+            else:
+                raise ValueError("Unrecognized action type {}".format(egout[ACTION_TYPE]))
+
+def print_endgame_status(cur_game_state):
+    '''
+    Print the endgame scores, winner, and termination condition.
+    '''
+
+    winner = None
+    #alpha_score = penv.kothgame.game_state[U.P1][U.SCORE]
+    #beta_score = penv.kothgame.game_state[U.P2][U.SCORE]
+    alpha_score = cur_game_state[SCORE_ALPHA]
+    beta_score = cur_game_state[SCORE_BETA]
+    
+    if alpha_score > beta_score:
+        winner = U.P1
+    elif beta_score > alpha_score:
+        winner = U.P2
+    else:
+        winner = 'draw'
+    print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score))
+
+    # The following requires the input arguments to the koth game, so it is better to get this from a similar koth print function.
+    # if cur_game_state[TOKEN_STATES][0]['fuel'] <= DGP.MIN_FUEL:
+    #     term_cond = "alpha out of fuel"
+    # elif cur_game_state[TOKEN_STATES][1]['fuel'] <= DGP.MIN_FUEL:
+    #     term_cond = "beta out of fuel"
+    # elif cur_game_state[SCORE_ALPHA] >= DGP.WIN_SCORE[U.P1]:
+    #     term_cond = "alpha reached Win Score"
+    # elif cur_game_state[SCORE_BETA]  >= DGP.WIN_SCORE[U.P2]:
+    #     term_cond = "beta reached Win Score"
+    # elif cur_game_state[TURN_NUMBER]  >= DGP.MAX_TURNS:
+    #     term_cond = "max turns reached" 
+    # else:
+    #     term_cond = "unknown"
+    # print("Termination condition: {}".format(term_cond))
+

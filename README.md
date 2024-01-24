@@ -1,6 +1,7 @@
 # OrbitDefender2D
 
-~~> TODO: *Add emblem/logo upon completion*
+
+<img src="logo.svg" width="600"> 
 
 ## Overview
 

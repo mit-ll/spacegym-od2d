@@ -449,8 +449,6 @@ class KOTHGame:
         '''
         illegal_actions, alpha_illegal, beta_illegal = get_illegal_verbose_actions(actions, self.game_state[U.LEGAL_ACTIONS])
         if len(illegal_actions) > 0:
-            print("WARNING: Illegal actions {}".format(illegal_actions))
-
             # set player's score if illegal action selected
             if alpha_illegal:
                 self.game_state[U.P1][U.SCORE] = self.inargs.illegal_action_score
@@ -1305,6 +1303,35 @@ def start_log_file(logfile):
 
     return logfile
 
+def print_endgame_status(game, file=None):
+    '''
+    Print the endgame status, scores, winner, termination conditions.
+    '''
+    winner = None
+    alpha_score =game.game_state[U.P1][U.SCORE]
+    beta_score = game.game_state[U.P2][U.SCORE]
+    if alpha_score > beta_score:
+        winner = U.P1
+    elif beta_score > alpha_score:
+        winner = U.P2
+    else:
+        winner = 'draw'
+
+    cur_game_state = game.game_state
+    if cur_game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
+        print("alpha seeker out of fuel", file=file)
+    if cur_game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
+        print("beta seeker out of fuel", file=file)
+    if cur_game_state[U.P1][U.SCORE] >= game.inargs.win_score[U.P1]:
+        print("alpha reached Win Score", file=file)
+    if cur_game_state[U.P2][U.SCORE]  >= game.inargs.win_score[U.P2]:
+        print("beta reached Win Score", file=file)
+    if cur_game_state[U.TURN_COUNT]  >= game.inargs.max_turns:
+        print("max turns reached", file=file)
+
+    print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score), file=file)
+
+
 def log_game_to_file(game, logfile, actions=None):
     ''' add game state to game log file
 
@@ -1330,29 +1357,7 @@ def log_game_to_file(game, logfile, actions=None):
             #Print final engagement outcomes
             print_engagement_outcomes(game.engagement_outcomes, file=f)
             print_game_info(game, file=f)
-            winner = None
-            alpha_score =game.game_state[U.P1][U.SCORE]
-            beta_score = game.game_state[U.P2][U.SCORE]
-            if alpha_score > beta_score:
-                winner = U.P1
-            elif beta_score > alpha_score:
-                winner = U.P2
-            else:
-                winner = 'draw'
-
-            cur_game_state = game.game_state
-            if cur_game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
-                print("alpha seeker out of fuel", file=f)
-            if cur_game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
-                print("beta seeker out of fuel", file=f)
-            if cur_game_state[U.P1][U.SCORE] >= game.inargs.win_score[U.P1]:
-                print("alpha reached Win Score", file=f)
-            if cur_game_state[U.P2][U.SCORE]  >= game.inargs.win_score[U.P2]:
-                print("beta reached Win Score", file=f)
-            if cur_game_state[U.TURN_COUNT]  >= game.inargs.max_turns:
-                print("max turns reached", file=f)
-
-            print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score), file=f)
+            print_endgame_status(game, file=f)
 
             #Close file and return
             f.close()

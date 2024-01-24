@@ -63,3 +63,38 @@ def print_engagement_outcomes_list(engagement_outcomes):
                 print("NOOP")
             else:
                 raise ValueError("Unrecognized action type {}".format(egout[GS.ACTION_TYPE]))
+
+def print_endgame_statsus(cur_game_state):
+    '''
+    Print the endgame scores, winner, and termination condition.
+    '''
+
+    winner = None
+    #alpha_score = penv.kothgame.game_state[U.P1][U.SCORE]
+    #beta_score = penv.kothgame.game_state[U.P2][U.SCORE]
+    alpha_score = cur_game_state[GS.SCORE_ALPHA]
+    beta_score = cur_game_state[GS.SCORE_BETA]
+    
+    if alpha_score > beta_score:
+        winner = U.P1
+    elif beta_score > alpha_score:
+        winner = U.P2
+    else:
+        winner = 'draw'
+    print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score))
+
+    if cur_game_state[GS.TOKEN_STATES][0]['fuel'] <= DGP.MIN_FUEL:
+        term_cond = "alpha out of fuel"
+    elif cur_game_state[GS.TOKEN_STATES][1]['fuel'] <= DGP.MIN_FUEL:
+        term_cond = "beta out of fuel"
+    elif cur_game_state[GS.SCORE_ALPHA] >= DGP.WIN_SCORE[U.P1]:
+        term_cond = "alpha reached Win Score"
+    elif cur_game_state[GS.SCORE_BETA]  >= DGP.WIN_SCORE[U.P2]:
+        term_cond = "beta reached Win Score"
+    elif cur_game_state[GS.TURN_NUMBER]  >= DGP.MAX_TURNS:
+        term_cond = "max turns reached" 
+    else:
+        term_cond = "unknown"
+    print("Termination condition: {}".format(term_cond))
+
+
