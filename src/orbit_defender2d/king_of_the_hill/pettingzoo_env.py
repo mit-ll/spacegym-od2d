@@ -97,7 +97,7 @@ assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_O
 N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2]))  #should be movement types + engagement types*tokens per player
 N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2])) #should be tokens per player * bits per token action
 
-def env(rllib_env_config=None):
+def env(game_params=None,rllib_env_config=None):
     '''
     The env function wraps the environment in 3 wrappers by default. These
     wrappers contain logic that is common to many pettingzoo environments.
@@ -105,20 +105,20 @@ def env(rllib_env_config=None):
     to provide sane error messages. You can find full documentation for these methods
     elsewhere in the developer documentation.
     '''
-    env = raw_env(rllib_env_config)
+    env = raw_env(game_params=game_params, rllib_env_config=rllib_env_config)
     env = wrappers.CaptureStdoutWrapper(env)
     # env = wrappers.AssertOutOfBoundsWrapper(env)
     env = wrappers.OrderEnforcingWrapper(env)
     return env
 
-def raw_env(rllib_env_config=None):
+def raw_env(game_params=None, rllib_env_config=None):
     '''
     To support the AEC API, the raw_env() function just uses the parallel_to_aec
     function to convert from a ParallelEnv to an AEC env
 
     See: https://www.pettingzoo.ml/environment_creation#example-custom-parallel-environment
     '''
-    env = parallel_env(rllib_env_config)
+    env = parallel_env(game_params=game_params,rllib_env_config=rllib_env_config)
     env = parallel_to_aec(env)
     return env
 
@@ -140,7 +140,7 @@ def pol2cart(r, a, c):
 class parallel_env(ParallelEnv):
     metadata = {'render.modes': ['human'], "name": "rps_v1"}
 
-    def __init__(self, rllib_env_config=None):
+    def __init__(self, game_params=None, rllib_env_config=None):
         '''
         The init method takes in environment arguments and should define the following attributes:
         - possible_agents
@@ -155,7 +155,10 @@ class parallel_env(ParallelEnv):
         '''
 
         # instantiate gameboard
-        self.kothgame = koth.KOTHGame(**GAME_PARAMS._asdict())
+        if game_params is None:
+            self.kothgame = koth.KOTHGame(**GAME_PARAMS._asdict())
+        else:
+            self.kothgame = koth.KOTHGame(**game_params._asdict())
 
         # get agent names from game object
         self.possible_agents = self.kothgame.player_names
