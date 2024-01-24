@@ -15,42 +15,6 @@
 
 ------------
 
-## Citation
-
-~~> TODO: *Zenodo DOI to be added upon making repo public*
-
-```
-@inproceedings{allen2023spacegym,
-  title={SpaceGym: Discrete and Differential Games in Non-Cooperative Spa
-ce Operations},
-  author={Allen, Ross E and Rachlin, Yaron and Ruprecht, Jessica and Loughran, Sean and Varey, Jacob and Viggh, Herbert},
-  booktitle={2023 IEEE Aerospace Conference},
-  pages={1--12},
-  year={2023},
-  organization={IEEE}
-}
-```
-
-------------
-
-## Disclaimer
-
-DISTRIBUTION STATEMENT A. Approved for public release. Distribution is unlimited.
-
-This material is based upon work supported by the Under Secretary of Defense for Research and Engineering under Air Force Contract No. FA8702-15-D-0001. Any opinions, findings, conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Under Secretary of Defense for Research and Engineering.
-
-© 2022 Massachusetts Institute of Technology.
-
-Subject to FAR52.227-11 Patent Rights - Ownership by the contractor (May 2014)
-
-SPDX-License-Identifier: MIT
-
-The software/firmware is provided to you on an As-Is basis
-
-Delivered to the U.S. Government with Unlimited Rights, as defined in DFARS Part 252.227-7013 or 7014 (Feb 2014). Notwithstanding any copyright notice, U.S. Government rights in this work are defined by DFARS 252.227-7013 or DFARS 252.227-7014 as detailed above. Use of this work other than as specifically authorized by the U.S. Government may violate any copyrights that exist in this work.
-
-------------
-
 ## Installation
 
 To install this package, run:
@@ -136,24 +100,38 @@ The PettingZoo-wrapped game can be visualized based on a rendering function. For
 python src/orbit_defender2d/king_of_the_hill/examples/pettingzoo_random_rendered_game.py
 ```
 
+------------
 
-### Self-Play Training with RLlib
+## Citation
 
-_UNDER DEVELOPMENT_
+~~> TODO: *Zenodo DOI to be added upon making repo public*
 
-
-### Playing UNITY Orbital Defender 
-
-You can use the KOTH game engine to run the 3D Unity interface (_LINK TO BE ADDED_). To run it, follow the installation and environment instructions above. After that, in an Anaconda shell change directory to the sandbox directory, [...]\orbit_defender2d\src\orbit_defender2d\sandbox. Type the following 
-
-```bash
-conda activate orbit_defender2d
-python server_for_unity.py
+```
+@inproceedings{allen2023spacegym,
+  title={SpaceGym: Discrete and Differential Games in Non-Cooperative Spa
+ce Operations},
+  author={Allen, Ross E and Rachlin, Yaron and Ruprecht, Jessica and Loughran, Sean and Varey, Jacob and Viggh, Herbert},
+  booktitle={2023 IEEE Aerospace Conference},
+  pages={1--12},
+  year={2023},
+  organization={IEEE}
+}
 ```
 
-Once the server is activated you can start the 3D Unity interface and all communication will happen behind the scenes. 
+------------
 
-#### Python-Unity JSON API
+## Disclaimer
 
-_UNDER DEVELOPMENT_
+DISTRIBUTION STATEMENT A. Approved for public release. Distribution is unlimited.
 
+This material is based upon work supported by the Under Secretary of Defense for Research and Engineering under Air Force Contract No. FA8702-15-D-0001. Any opinions, findings, conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Under Secretary of Defense for Research and Engineering.
+
+© 2022 Massachusetts Institute of Technology.
+
+Subject to FAR52.227-11 Patent Rights - Ownership by the contractor (May 2014)
+
+SPDX-License-Identifier: MIT
+
+The software/firmware is provided to you on an As-Is basis
+
+Delivered to the U.S. Government with Unlimited Rights, as defined in DFARS Part 252.227-7013 or 7014 (Feb 2014). Notwithstanding any copyright notice, U.S. Government rights in this work are defined by DFARS 252.227-7013 or DFARS 252.227-7014 as detailed above. Use of this work other than as specifically authorized by the U.S. Government may violate any copyrights that exist in this work.
