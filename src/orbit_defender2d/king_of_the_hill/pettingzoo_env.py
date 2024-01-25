@@ -218,7 +218,7 @@ class parallel_env(ParallelEnv):
 
         # display colors
         self._colors = {'white': (255, 255, 255), 'faint_green': (220, 255, 220), 'black': (0, 0, 0),
-                        'gray': (150, 150, 150), 'dark_gray': (100, 100, 100), 'aqua': (0, 180, 180),
+                        'gray': (200, 200, 200), 'dark_gray': (100, 100, 100), 'aqua': (0, 180, 180),
                         'red': (200, 0, 120), 'dull_aqua': (120, 150, 150), 'dull_red': (150, 120, 140),
                         'dark_aqua': (0, 80, 80), 'dark_red': (80, 0, 50), 'light_green': (180, 255, 180),
                         'light_yellow': (255, 255, 200), 'light_aqua': (180, 255, 255), 'light_red': (255, 150, 180)}
@@ -1008,7 +1008,7 @@ class parallel_env(ParallelEnv):
                             for idx, local_token_idx in enumerate(range(token_idx1, token_idx1 + local_token_count)):
                                 token_center = self.get_token_coords(sector, token_count1, local_token_idx, 1)
                                 pg.draw.circle(self._screen, self._null_color, token_center, bludger_size)
-                                pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
+                                pg.draw.circle(self._screen, color, token_center, bludger_size, width=3)
                                 if token_ids[idx] != 10:
                                     self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
                                                     (token_center[0] - (0.5 * b_font_size[0]),
