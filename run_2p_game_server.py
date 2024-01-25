@@ -281,7 +281,7 @@ def create_listener_client():
         plr_alias='listener_client',)
     return listener_client
 
-def run_listener(game_server, listener_client):   
+def run_listener(game_server, listener_client, render=False):   
     # Don't register the client as a player, just subscribe to the pub socket
     tmp_game_state = listener_client.game_state
     game_started = False
@@ -295,9 +295,18 @@ def run_listener(game_server, listener_client):
     game_started = True
     print("Game started")
 
+    if render:
+        #Create local penv game to render
+        penv = PZE.parallel_env(game_params=GAME_PARAMS)
+
     while tmp_game_state['gameDone'] is False:
         sleep(3)
         tmp_game_state = listener_client.game_state
+        if render:
+            local_game = penv.kothgame
+            local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
+            penv.kothgame = tmp_game_state
+            penv.render(mode='human')
         print("Waiting for game to finish")
     
     game_finised = True
