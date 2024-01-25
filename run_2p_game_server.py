@@ -305,7 +305,7 @@ def run_listener(game_server, listener_client, render=False):
         if render:
             local_game = penv.kothgame
             local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
-            penv.kothgame = tmp_game_state
+            penv.kothgame = local_game
             penv.render(mode='human')
         print("Waiting for game to finish")
     
