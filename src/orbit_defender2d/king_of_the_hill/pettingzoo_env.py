@@ -617,14 +617,14 @@ class parallel_env(ParallelEnv):
                 cur_inactive = False
 
             # determine token type and number (influences vertical alignment)
-            if split_name[1] == "seeker":
+            if split_name[1] == U.SEEKER:
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1])
-                name_short = "Seeker 0"
+                name_short = "King 0"
             else:
                 t_num = int(token_name[-1])
                 if t_num == 0:
                     t_num = 10
-                name_short = "Bludger " + str(t_num)
+                name_short = "Pawn " + str(t_num)
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1]) + (t_num * (4 * b_font_size[1]))
 
             # display bounding box
@@ -873,7 +873,7 @@ class parallel_env(ParallelEnv):
             self._screen.blit(t_fuel, (player_x_mid, player_y_mid - (0.2 * b_font_size[1])))
 
             # display ammo if token is not seeker
-            if "bludger" in token_name:
+            if U.BLUDGER in token_name:
                 t_ammo_title = self._font_bold.render("Ammo:", True, subtitle_color)
                 self._screen.blit(t_ammo_title,
                                   (player_x_mid + (10 * b_font_size[0]), player_y_mid - (0.2 * b_font_size[1])))
@@ -919,7 +919,7 @@ class parallel_env(ParallelEnv):
                 sector_occupancies[token_state.position] = {'AS': [], 'ABA': [], 'ABI': [],
                                                             'BS': [], 'BBA': [], 'BBI': []}
             if split_name[0] == "alpha":
-                if split_name[1] == "seeker":
+                if split_name[1] == U.SEEKER:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
                         sector_occupancies[token_state.position]['AS'] = [1]  # track active alpha seeker
                     else:
@@ -930,7 +930,7 @@ class parallel_env(ParallelEnv):
                     else:
                         sector_occupancies[token_state.position]['ABI'].append(int(split_name[2]))  # track inactive alpha bludgers
             else:
-                if split_name[1] == "seeker":
+                if split_name[1] == U.SEEKER:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
                         sector_occupancies[token_state.position]['BS'] = [1]  # track active beta seeker
                     else:

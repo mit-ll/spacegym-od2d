@@ -19,7 +19,7 @@ FUEL_SCORE = 'fuel_score'
 TOKEN_ADJACENCY = 'token_adjacency_graph'
 LEGAL_ACTIONS = 'legal_verbose_actions'
 TURN_PHASE_LIST = [MOVEMENT, ENGAGEMENT, DRIFT] = ['movement', 'engagement', 'drift']
-PIECE_ROLES = [SEEKER, BLUDGER] = ['seeker', 'bludger']
+PIECE_ROLES = [SEEKER, BLUDGER] = ['king', 'pawn']
 MOVEMENT_TYPES = [NOOP, PROGRADE, RETROGRADE, RADIAL_IN, RADIAL_OUT] = \
                 ['noop', 'prograde', 'retrograde', 'radial_in', 'radial_out']
 ENGAGEMENT_TYPES = [SHOOT, COLLIDE, GUARD] = ['shoot', 'collide', 'guard']
