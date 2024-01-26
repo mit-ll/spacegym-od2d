@@ -619,12 +619,12 @@ class parallel_env(ParallelEnv):
             # determine token type and number (influences vertical alignment)
             if split_name[1] == U.SEEKER:
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1])
-                name_short = "King 0"
+                name_short = U.SEEKER + " 0"
             else:
                 t_num = int(token_name[-1])
                 if t_num == 0:
                     t_num = 10
-                name_short = "Pawn " + str(t_num)
+                name_short = U.BLUDGER + " " + str(t_num)
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1]) + (t_num * (4 * b_font_size[1]))
 
             # display bounding box
