@@ -264,7 +264,26 @@ class KOTHGame:
                             role=U.BLUDGER, 
                             position=0)
                     n_tokens_beta += 1
-
+        ########## THIS IS FOR USE ONLY WITH AI AGENTS THAT REQUIRE EXACTLY 1 SEEKER AND 10 BLUDGERS
+        if n_tokens_alpha and n_tokens_beta < 11:
+            #Add more 'removed' satellites to each player until they each have 11 total satellites
+            for sat_i in range(11 - n_tokens_alpha):
+                p1_state.append(None)
+                p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
+                    KOTHTokenState(
+                        Satellite(fuel=0, ammo=0), 
+                        role=U.BLUDGER, 
+                        position=0)
+                n_tokens_alpha += 1
+            for sat_i in range(11 - n_tokens_beta):
+                p2_state.append(None)
+                p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
+                    KOTHTokenState(
+                        Satellite(fuel=0, ammo=0), 
+                        role=U.BLUDGER, 
+                        position=0)
+                n_tokens_beta += 1
+        ########## END OF SECTION FOR USE ONLY WITH AI AGENTS THAT REQUIRE EXACTLY 1 SEEKER AND 10 BLUDGERS
 
         game_state[U.P1][U.TOKEN_STATES] = p1_state
         game_state[U.P1][U.SCORE] = 0 #Score track based on goal sector and fuel points
