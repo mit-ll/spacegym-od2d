@@ -55,7 +55,7 @@ INIT_AMMO = {
         },
     U.P2:{
         U.SEEKER:   0,
-        U.BLUDGER:  0,
+        U.BLUDGER:  1,
         },
     }
 
