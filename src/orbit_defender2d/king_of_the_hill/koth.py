@@ -331,16 +331,18 @@ class KOTHGame:
         game_state[U.GOAL1] = cur_game_state[GS.GOAL_ALPHA] #p1hill
         game_state[U.GOAL2] = cur_game_state[GS.GOAL_BETA] #p2hill
 
-        # Populate the seeker pieces at team target sectors (hills)
-        p1_state = [None] #TODO: Get rid of hardcoded piece names
-        p1_state[0] = token_catalog["alpha:seeker:0"] = KOTHTokenState(
+        n_tokens_alpha = 0
+        n_tokens_beta = 0
+  
+        p1_state = [None] 
+        p1_state[0] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = KOTHTokenState(
                 Satellite(fuel=cur_game_state[GS.TOKEN_STATES][0]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][0]['ammo']), 
                 role=cur_game_state[GS.TOKEN_STATES][0]['role'], 
                 position=cur_game_state[GS.TOKEN_STATES][0]['position'])
         n_tokens_alpha = 1
 
         p2_state = [None]
-        p2_state[0] = token_catalog["beta:seeker:0"] = KOTHTokenState(
+        p2_state[0] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = KOTHTokenState(
                 Satellite(fuel=cur_game_state[GS.TOKEN_STATES][1]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][1]['ammo']), 
                 role=cur_game_state[GS.TOKEN_STATES][1]['role'], 
                 position=cur_game_state[GS.TOKEN_STATES][1]['position'])
