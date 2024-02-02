@@ -70,7 +70,7 @@ python koth_game_rollout_CLI.py
 
 ## Game: King Of the Hill (KOTH)
 
-The [King of the Hill Game](https://github.com/mit-ll/spacegym-od2d/tree/master/src/orbit_defender2d/king_of_the_hill) is a balanced game of two players. Each player has a collection of satellites (referred to as "pieces" or "tokens") that they control. Satellites are seperated into categories of point-scoring tokens ("King") and defensive/offensive tokens ("Pawn"). Each satellites can move about the board by expending fuel and can engage with satellites of the opposing agent. Each player also has a special a goal location, i.e. "hill", on which they can place their seeker to score points. The objective of the game is to score more points that your opponent. You can minimize the number of points scored by your opponent by attacking their pieces.
+The [King of the Hill Game](https://github.com/mit-ll/spacegym-od2d/tree/master/src/orbit_defender2d/king_of_the_hill) is a balanced game of two players. Each player has a collection of satellites (referred to as "pieces" or "tokens") that they control. Satellites are seperated into categories of point-scoring tokens ("High Value Asset- HVA") and defensive/offensive tokens ("Patrol"). Each satellites can move about the board by expending fuel and can engage with satellites of the opposing agent. Each player also has a special a goal location, i.e. "hill", on which they can place their seeker to score points. The objective of the game is to score more points that your opponent. You can minimize the number of points scored by your opponent by attacking their pieces.
 
 For comprehensive rule set, please see the [__Game Rules Wiki__](https://github.com/mpj15/spacegym-od2d/wiki)
 
