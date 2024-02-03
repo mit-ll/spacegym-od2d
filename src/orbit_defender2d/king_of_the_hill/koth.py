@@ -166,7 +166,7 @@ class KOTHGame:
         '''
         self.game_state[U.GAME_DONE] = True
 
-        # No need to update score here. It is updated in drift phase, which is the only place that terminate_game is called
+        # No need to update score here. It is updated in drift phase, which is the only place that terminate_game is called unless an illegal action is played (which shouldn't hapen)
         # update final score from fuel remaining
         #for plr_id in [U.P1, U.P2]:
         #    self.game_state[plr_id][U.SCORE] += self.get_fuel_points(player_id=plr_id)
