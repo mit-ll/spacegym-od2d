@@ -50,12 +50,12 @@ INIT_FUEL = {
 
 INIT_AMMO = {
     U.P1:{
-        U.SEEKER:   0,
-        U.BLUDGER:  1,
+        U.SEEKER:   10,
+        U.BLUDGER:  2,
         },
     U.P2:{
-        U.SEEKER:   0,
-        U.BLUDGER:  1,
+        U.SEEKER:   10,
+        U.BLUDGER:  2,
         },
     }
 
