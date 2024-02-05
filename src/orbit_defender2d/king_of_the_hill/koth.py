@@ -1245,8 +1245,8 @@ def get_legal_verbose_actions(
                         if token_catalog[target_token_name].satellite.fuel > 0:
                             # collide is legal if target has fuel, even if the actor does not have enough fuel. If actor fuel is insufficient, then this will be filterd out by apply_fuel_constraints
                             legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
-                            # shoot only legal if ammo available and token is not SEEKER
-                            if U.SEEKER not in target_token_name:
+                            # shoot only legal if ammo available and token is not SEEKER, SEEKER tokens can't shoot
+                            if U.SEEKER not in token_name:
                                 if token_state.satellite.ammo >= 1:
                                     legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
 
