@@ -72,7 +72,12 @@ N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
 N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
 N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
 N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
-N_BITS_OBS_AMMO = len(U.int2bitlist(int(max(DGP.INIT_AMMO[U.P1][U.BLUDGER],DGP.INIT_AMMO[U.P2][U.BLUDGER],MAX_AMMO))))  # assumes max ammo of 1 -> 1 bit binary
+N_BITS_OBS_AMMO = max(
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
+    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
+    len(U.int2bitlist(MAX_AMMO)))
 N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
 #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
 N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2])) #number of tokens per player * bits per token
@@ -2241,7 +2246,8 @@ class KOTHObservationSpaces:
                 len(U.int2bitlist(game.inargs.init_ammo[U.P1][U.SEEKER])),
                 len(U.int2bitlist(game.inargs.init_ammo[U.P1][U.BLUDGER])),
                 len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.SEEKER])),
-                len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.BLUDGER]))))
+                len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.BLUDGER])),
+                len(U.int2bitlist(int(MAX_AMMO)))))
         )
 
         # flattened observation of single token (1D vector normalized elements to range [0,1])
