@@ -216,15 +216,23 @@ class parallel_env(ParallelEnv):
         self._very_large_font_bold = None
 
         # font sizes
-        self._very_large_font_size = 48
-        self._large_font_size = 28
-        self._semi_large_font_size = 24
-        self._font_size = 16
-        self._small_font_size = 14
+        self._very_large_font_size_orig = 48
+        self._very_large_font_size = self._very_large_font_size_orig
+        self._large_font_size_orig = 28
+        self._large_font_size = self._large_font_size_orig
+        self._semi_large_font_size_orig = 24
+        self._semi_large_font_size = self._semi_large_font_size_orig
+        self._font_size_orig = 16
+        self._font_size = self._font_size_orig
+        self._small_font_size_orig = 14
+        self._small_font_size = self._small_font_size_orig
 
         # display dimensions
         self._x_dim = 1280  # 880
         self._y_dim = 720  # 560
+        self._aspect_ratio = self._x_dim / self._y_dim
+        self._x_dim_orig = self._x_dim
+        self._y_dim_orig = self._y_dim
         self._ring_count = self.kothgame.inargs.max_ring - self.kothgame.inargs.min_ring + 1
         self._margins = (10, 10)
         self._board_r = (self._y_dim - self._margins[1]) / 2
@@ -1078,19 +1086,25 @@ class parallel_env(ParallelEnv):
         
         for event in pg.event.get():
             if event.type == pg.VIDEORESIZE:
-                h_ratio = event.h / self._y_dim
-                w_ratio = event.w / self._x_dim
+                h_ratio = event.h / self._y_dim_orig
+                w_ratio = event.w / self._x_dim_orig
+                if h_ratio > w_ratio:
+                    #width is limiting factor, set height based on aspect ratio
+                    h_ratio = w_ratio
+                else:
+                    #height is limiting factor, set width based on aspect ratio
+                    w_ratio = h_ratio
                 ratio_mean = (h_ratio + w_ratio) / 2
-                self._x_dim = event.w
-                self._y_dim = event.h
+                self._x_dim = w_ratio * self._x_dim_orig
+                self._y_dim = h_ratio * self._y_dim_orig
                 self._board_r = (self._y_dim - self._margins[1]) / 2
                 self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
                 self._button_size = self._x_dim // 20
-                self._very_large_font_size = int(ratio_mean * self._very_large_font_size)
-                self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size)
-                self._large_font_size = int(ratio_mean * self._large_font_size)
-                self._font_size = int(ratio_mean * self._font_size)
-                self._small_font_size = int(ratio_mean * self._small_font_size)
+                self._very_large_font_size = int(ratio_mean * self._very_large_font_size_orig)
+                self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size_orig)
+                self._large_font_size = int(ratio_mean * self._large_font_size_orig)
+                self._font_size = int(ratio_mean * self._font_size_orig)
+                self._small_font_size = int(ratio_mean * self._small_font_size_orig)
                 self.initialize_fonts()
                 self.render(mode=self._render_mode)
         pg.time.wait(100)
@@ -1139,6 +1153,7 @@ class parallel_env(ParallelEnv):
                                                     self._colors['light_red'])
                                   }
             self._buttons_active = True
+            self.render(mode=self._render_mode)
 
         # draw each button in the button panel
         for button in self._button_panel.values():
@@ -1191,23 +1206,29 @@ class parallel_env(ParallelEnv):
                         self._is_paused, self._latency, do_step, do_quit = \
                             self._button_panel['Quit'].press(self._is_paused, self._latency, self._min_latency)
                 elif event.type == pg.VIDEORESIZE:
-                    h_ratio = event.h / self._y_dim
-                    w_ratio = event.w / self._x_dim
+                    h_ratio = event.h / self._y_dim_orig
+                    w_ratio = event.w / self._x_dim_orig
+                    if h_ratio > w_ratio:
+                        #width is limiting factor, set height based on aspect ratio
+                        h_ratio = w_ratio
+                    else:
+                        #height is limiting factor, set width based on aspect ratio
+                        w_ratio = h_ratio
                     ratio_mean = (h_ratio + w_ratio) / 2
-                    self._x_dim = event.w
-                    self._y_dim = event.h
+                    self._x_dim = w_ratio * self._x_dim_orig
+                    self._y_dim = h_ratio * self._y_dim_orig
                     self._board_r = (self._y_dim - self._margins[1]) / 2
                     self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
                     self._button_size = self._x_dim // 20
-                    self._very_large_font_size = int(ratio_mean * self._very_large_font_size)
-                    self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size)
-                    self._large_font_size = int(ratio_mean * self._large_font_size)
-                    self._font_size = int(ratio_mean * self._font_size)
-                    self._small_font_size = int(ratio_mean * self._small_font_size)
+                    self._very_large_font_size = int(ratio_mean * self._very_large_font_size_orig)
+                    self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size_orig)
+                    self._large_font_size = int(ratio_mean * self._large_font_size_orig)
+                    self._font_size = int(ratio_mean * self._font_size_orig)
+                    self._small_font_size = int(ratio_mean * self._small_font_size_orig)
                     self.initialize_fonts()
                     self._buttons_active = False
+                    self.enable_render(mode=self._render_mode)
                     self.render(mode=self._render_mode)
-
             # continue to next phase
             if do_step:
                 break
