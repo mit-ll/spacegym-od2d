@@ -215,6 +215,13 @@ class parallel_env(ParallelEnv):
         self._semi_large_font_bold = None
         self._very_large_font_bold = None
 
+        # font sizes
+        self._very_large_font_size = 48
+        self._large_font_size = 28
+        self._semi_large_font_size = 24
+        self._font_size = 16
+        self._small_font_size = 14
+
         # display dimensions
         self._x_dim = 1280  # 880
         self._y_dim = 720  # 560
@@ -247,11 +254,29 @@ class parallel_env(ParallelEnv):
 
         # program flow and user control
         self._is_paused = True
-        self._latency = 5000  # milliseconds between displaying turn phases
-        self._min_latency = 500  # milliseconds between displaying turn phases
+        self._latency = 500  # milliseconds between displaying turn phases
+        self._min_latency = 100  # milliseconds between displaying turn phases
         self._buttons_active = False
         self._button_panel = None
         self._button_size = self._x_dim // 20
+
+    def initialize_fonts(self):
+        '''
+        Initializes fonts for rendering
+        '''
+        # initialize fonts
+        very_large_font_size = self._very_large_font_size
+        large_font_size = self._large_font_size
+        semi_large_font_size = self._semi_large_font_size
+        font_size = self._font_size
+        small_font_size = self._small_font_size
+        self._font = pg.font.SysFont(pg.font.get_default_font(), font_size)
+        self._font_bold = pg.font.SysFont(pg.font.get_default_font(), font_size, True)
+        self._large_font = pg.font.SysFont(pg.font.get_default_font(), large_font_size)
+        self._large_font_bold = pg.font.SysFont(pg.font.get_default_font(), large_font_size, True)
+        self._small_font_bold = pg.font.SysFont(pg.font.get_default_font(), small_font_size, True)
+        self._semi_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), semi_large_font_size, True)
+        self._very_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), very_large_font_size, True)
 
     def enable_render(self, mode):
         '''
@@ -261,29 +286,16 @@ class parallel_env(ParallelEnv):
         pg.init()
         self.render_active = True
         self._render_mode = mode
-        self._screen = pg.display.set_mode((self._x_dim, self._y_dim))
+        self._screen = pg.display.set_mode((self._x_dim, self._y_dim), pg.RESIZABLE)
         pg.display.set_caption('Orbit Defender')
-
-        # initialize fonts
-        very_large_font_size = 48
-        large_font_size = 28
-        semi_large_font_size = 24
-        font_size = 16
-        small_font_size = 14
-        self._font = pg.font.SysFont(pg.font.get_default_font(), font_size)
-        self._font_bold = pg.font.SysFont(pg.font.get_default_font(), font_size, True)
-        self._large_font = pg.font.SysFont(pg.font.get_default_font(), large_font_size)
-        self._large_font_bold = pg.font.SysFont(pg.font.get_default_font(), large_font_size, True)
-        self._small_font_bold = pg.font.SysFont(pg.font.get_default_font(), small_font_size, True)
-        self._semi_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), semi_large_font_size, True)
-        self._very_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), very_large_font_size, True)
+        self.initialize_fonts()
 
     def render(self, mode="human"):
         '''
         Renders the environment. In human mode, it opens
         up a graphical window to display the game board, pieces, and game details.
         '''
-        
+
         if mode == "json":
             print(f'inrender, worker is: {self.workerid}, flag is: {self.render_json}')
             if self.render_json is None:
@@ -315,7 +327,7 @@ class parallel_env(ParallelEnv):
             pg.display.update()
 
         if mode == "human":
-            pg.time.wait(self._latency)
+            self._watch_for_window_resize()
         elif mode == "debug":
             self._handle_events()
 
@@ -602,7 +614,7 @@ class parallel_env(ParallelEnv):
 
         # display details of each token
         for token_name, token_state in self.kothgame.token_catalog.items():
-            if token_state.position == 0: #If token is in the center, don't display it
+            if token_state.position == 0: #If token is in position 0 (the earth), don't display it
                 continue
             # determine token player (influences color and horizontal alignment)
             split_name = token_name.split(':')
@@ -1059,6 +1071,30 @@ class parallel_env(ParallelEnv):
 
         return pol2cart(token_r, token_angle, self._board_c)
 
+    def _watch_for_window_resize(self):
+        '''
+        Check for window resize, and if detected, update the window size and redraw the board
+        '''
+        
+        for event in pg.event.get():
+            if event.type == pg.VIDEORESIZE:
+                h_ratio = event.h / self._y_dim
+                w_ratio = event.w / self._x_dim
+                ratio_mean = (h_ratio + w_ratio) / 2
+                self._x_dim = event.w
+                self._y_dim = event.h
+                self._board_r = (self._y_dim - self._margins[1]) / 2
+                self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
+                self._button_size = self._x_dim // 20
+                self._very_large_font_size = int(ratio_mean * self._very_large_font_size)
+                self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size)
+                self._large_font_size = int(ratio_mean * self._large_font_size)
+                self._font_size = int(ratio_mean * self._font_size)
+                self._small_font_size = int(ratio_mean * self._small_font_size)
+                self.initialize_fonts()
+                self.render(mode=self._render_mode)
+        pg.time.wait(100)
+        
     def _handle_events(self):
         '''
         Contains cycle that observes button presses and keystrokes to control program flow
@@ -1154,6 +1190,23 @@ class parallel_env(ParallelEnv):
                     elif event.key == pg.K_ESCAPE:  # escape key quits pygame and exits the program
                         self._is_paused, self._latency, do_step, do_quit = \
                             self._button_panel['Quit'].press(self._is_paused, self._latency, self._min_latency)
+                elif event.type == pg.VIDEORESIZE:
+                    h_ratio = event.h / self._y_dim
+                    w_ratio = event.w / self._x_dim
+                    ratio_mean = (h_ratio + w_ratio) / 2
+                    self._x_dim = event.w
+                    self._y_dim = event.h
+                    self._board_r = (self._y_dim - self._margins[1]) / 2
+                    self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
+                    self._button_size = self._x_dim // 20
+                    self._very_large_font_size = int(ratio_mean * self._very_large_font_size)
+                    self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size)
+                    self._large_font_size = int(ratio_mean * self._large_font_size)
+                    self._font_size = int(ratio_mean * self._font_size)
+                    self._small_font_size = int(ratio_mean * self._small_font_size)
+                    self.initialize_fonts()
+                    self._buttons_active = False
+                    self.render(mode=self._render_mode)
 
             # continue to next phase
             if do_step:
