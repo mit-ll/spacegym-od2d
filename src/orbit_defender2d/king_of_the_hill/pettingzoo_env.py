@@ -1083,31 +1083,34 @@ class parallel_env(ParallelEnv):
         '''
         Check for window resize, and if detected, update the window size and redraw the board
         '''
-        
-        for event in pg.event.get():
-            if event.type == pg.VIDEORESIZE:
-                h_ratio = event.h / self._y_dim_orig
-                w_ratio = event.w / self._x_dim_orig
-                if h_ratio > w_ratio:
-                    #width is limiting factor, set height based on aspect ratio
-                    h_ratio = w_ratio
-                else:
-                    #height is limiting factor, set width based on aspect ratio
-                    w_ratio = h_ratio
-                ratio_mean = (h_ratio + w_ratio) / 2
-                self._x_dim = w_ratio * self._x_dim_orig
-                self._y_dim = h_ratio * self._y_dim_orig
-                self._board_r = (self._y_dim - self._margins[1]) / 2
-                self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
-                self._button_size = self._x_dim // 20
-                self._very_large_font_size = int(ratio_mean * self._very_large_font_size_orig)
-                self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size_orig)
-                self._large_font_size = int(ratio_mean * self._large_font_size_orig)
-                self._font_size = int(ratio_mean * self._font_size_orig)
-                self._small_font_size = int(ratio_mean * self._small_font_size_orig)
-                self.initialize_fonts()
-                self.render(mode=self._render_mode)
-        pg.time.wait(100)
+        timer = 0
+        while timer < self._latency:
+            for event in pg.event.get():
+                if event.type == pg.VIDEORESIZE:
+                    h_ratio = event.h / self._y_dim_orig
+                    w_ratio = event.w / self._x_dim_orig
+                    if h_ratio > w_ratio:
+                        #width is limiting factor, set height based on aspect ratio
+                        h_ratio = w_ratio
+                    else:
+                        #height is limiting factor, set width based on aspect ratio
+                        w_ratio = h_ratio
+                    ratio_mean = (h_ratio + w_ratio) / 2
+                    self._x_dim = w_ratio * self._x_dim_orig
+                    self._y_dim = h_ratio * self._y_dim_orig
+                    self._board_r = (self._y_dim - self._margins[1]) / 2
+                    self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
+                    self._button_size = self._x_dim // 20
+                    self._very_large_font_size = int(ratio_mean * self._very_large_font_size_orig)
+                    self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size_orig)
+                    self._large_font_size = int(ratio_mean * self._large_font_size_orig)
+                    self._font_size = int(ratio_mean * self._font_size_orig)
+                    self._small_font_size = int(ratio_mean * self._small_font_size_orig)
+                    self.initialize_fonts()
+                    self.render(mode=self._render_mode)
+            pg.time.wait(100)
+            timer += 100
+        self.render(mode=self._render_mode)
         
     def _handle_events(self):
         '''

@@ -6,6 +6,7 @@ import zmq
 import threading
 import numpy as np
 import orbit_defender2d.utils.utils as U
+import copy
 import orbit_defender2d.king_of_the_hill.pettingzoo_env as PZE
 import orbit_defender2d.king_of_the_hill.default_game_parameters_OD as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_small as DGP
@@ -281,7 +282,7 @@ def create_listener_client():
         plr_alias='listener_client',)
     return listener_client
 
-def run_listener(game_server, listener_client, render=False):   
+def run_listener(game_server, listener_client, render=True):   
     # Don't register the client as a player, just subscribe to the pub socket
     tmp_game_state = listener_client.game_state
     game_started = False
@@ -298,16 +299,27 @@ def run_listener(game_server, listener_client, render=False):
     if render:
         #Create local penv game to render
         penv = PZE.parallel_env(game_params=GAME_PARAMS)
+        penv.reset()
+        penv.render(mode='human')
+
+    turn_phase = tmp_game_state['turnPhase']
 
     while tmp_game_state['gameDone'] is False:
-        sleep(3)
         tmp_game_state = listener_client.game_state
-        if render:
-            local_game = penv.kothgame
-            local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
-            penv.kothgame = local_game
-            penv.render(mode='human')
+        local_game = penv.kothgame
+        local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
+        penv.kothgame = local_game
+
+        if tmp_game_state['turnPhase'] != turn_phase:
+            koth.print_game_info(local_game)
+            turn_phase = tmp_game_state['turnPhase']
+            if render:
+                penv.render(mode='human')
+
+
+        
         print("Waiting for game to finish")
+        sleep(3)
     
     game_finised = True
     print("Game finished")
