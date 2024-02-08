@@ -1381,9 +1381,9 @@ class parallel_env(ParallelEnv):
         '''
 
         # deactivates pygame library and closes render window
-        pg.time.wait(self._latency)
+        #pg.time.wait(self._latency)
         #pg.close()
-        #pg.quit() #Don't need either, let the user decide when to close the window
+        pg.quit() #Don't need either, let the user decide when to close the window
 
     def reset(self):
         '''

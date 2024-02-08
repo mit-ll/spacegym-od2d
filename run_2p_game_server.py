@@ -289,7 +289,7 @@ def run_listener(game_server, listener_client, render=True):
     game_finised = False
 
     while tmp_game_state is None:
-        sleep(3)
+        sleep(5)
         tmp_game_state = listener_client.game_state
         print("Waiting for a game to begin")
         
@@ -320,11 +320,27 @@ def run_listener(game_server, listener_client, render=True):
 
         
         print("Waiting for game to finish")
-        sleep(3)
-    
+        sleep(1)
+
+    # Game is finished, print final info and get winner
+    koth.print_endgame_status(local_game)
+
+    winner = None
+    alpha_score =local_game.game_state[U.P1][U.SCORE]
+    beta_score = local_game.game_state[U.P2][U.SCORE]
+    if alpha_score > beta_score:
+        winner = U.P1
+    elif beta_score > alpha_score:
+        winner = U.P2
+    else:
+        winner = 'draw'
+
     if render:
         penv.render(mode='human')
+        sleep(1)
+        penv.draw_win(winner)
         sleep(10)
+        penv.close()
 
     game_finised = True
     print("Game finished")
