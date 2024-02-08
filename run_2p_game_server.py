@@ -313,14 +313,19 @@ def run_listener(game_server, listener_client, render=True):
         if tmp_game_state['turnPhase'] != turn_phase:
             koth.print_game_info(local_game)
             turn_phase = tmp_game_state['turnPhase']
-            if render:
-                penv.render(mode='human')
+        
+        if render:
+            penv.render(mode='human')
 
 
         
         print("Waiting for game to finish")
         sleep(3)
     
+    if render:
+        penv.render(mode='human')
+        sleep(10)
+
     game_finised = True
     print("Game finished")
     

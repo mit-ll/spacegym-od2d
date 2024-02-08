@@ -1084,7 +1084,7 @@ class parallel_env(ParallelEnv):
         Check for window resize, and if detected, update the window size and redraw the board
         '''
         timer = 0
-        while timer < self._latency:
+        while timer < 5000:
             for event in pg.event.get():
                 if event.type == pg.VIDEORESIZE:
                     h_ratio = event.h / self._y_dim_orig
@@ -1110,7 +1110,6 @@ class parallel_env(ParallelEnv):
                     self.render(mode=self._render_mode)
             pg.time.wait(100)
             timer += 100
-        self.render(mode=self._render_mode)
         
     def _handle_events(self):
         '''
@@ -1284,7 +1283,7 @@ class parallel_env(ParallelEnv):
         Displays image of the Earth in the center of the game board that rotates by 180 degrees at each drift phase.
         '''
         # Earth only rotates on drift phase
-        if self.kothgame.game_state[U.TURN_PHASE] == "movement" and self.kothgame.game_state[U.TURN_COUNT] > 0:
+        if self.kothgame.game_state[U.TURN_PHASE] == "drift" and self.kothgame.game_state[U.TURN_COUNT] > 0:
             cycles = 9
             rot_increment = 20
         else:
