@@ -10,3 +10,7 @@ venv
 venv/**
 
 oryx*
+
+.replit
+replit.nix
+pyproject.toml
