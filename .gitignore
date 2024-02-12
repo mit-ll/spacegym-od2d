@@ -14,3 +14,7 @@ oryx*
 .replit
 replit.nix
 pyproject.toml
+
+# Replit run files
+main.py
+run_*.py
