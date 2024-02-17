@@ -14,6 +14,7 @@ from tabnanny import verbose
 import numpy as np
 import json
 import pygame as pg
+from collections import namedtuple, OrderedDict
 
 from pathlib import Path
 #from gymnasium import spaces
@@ -32,6 +33,8 @@ import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC
 from orbit_defender2d.king_of_the_hill import koth
+from orbit_defender2d.king_of_the_hill.koth import KOTHTokenState
+from orbit_defender2d.utils.satellite import Satellite
 
 # observation space components
 TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
@@ -1502,6 +1505,123 @@ class parallel_env(ParallelEnv):
             'observation': self.encode_player_observation(player_id=agent)[0],
             'action_mask': self.encode_legal_action_mask(player_id=agent)
         } for agent in self.agents}
+    
+    def set_state_from_dict_observations(self,p1_id, obs_dict_1, p2_id, obs_dict_2):
+        '''
+            Return decoded, verbose observations for both players from dicts of observations.
+            Sets the self.kothgame.game_state and self.kothgame.token_catalog to the game state and token catalog
+            Uses the observation dict returned by encode_player observation.
+            This is similar to arbitraty_game_state_from_server in koth.py but uses the observation dict instead of a server gamestate.
+            It cane be used to update the penv to a desired game state in order to call step and get a new observation out.
+            Useful for a MCTS agent that needs to simulate a game from arbitrary states.
+
+            Inputs:
+                obs_dict_1, obs_dict_2 : dict
+                    observation dicts for player 1 and player 2 from encode_player_observation
+            Outputs:
+                gamestate: a kothgame gamestate object
+                token_catalog: a kothgame token_catalog object
+                n_tokens_alpha: int, number of tokens for player 1
+                n_tokens_beta: int, number of tokens for player 2
+        '''
+        # Get the scoreboard
+        scoreboard_p1 = obs_dict_1['scoreboard']
+        scoreboard_p2 = obs_dict_2['scoreboard']
+
+        # Get each player's tokens
+        tokens_p1 = obs_dict_1['own_tokens']
+        tokens_p1 = list(tokens_p1)
+        tokens_p2 = obs_dict_2['own_tokens']
+        tokens_p2 = list(tokens_p2)
+
+        # Create the game state
+        game_state = {p1_id:dict(), p2_id:dict()}
+
+        # Game wide information
+        game_state[U.TURN_COUNT] = positive_binary_to_int(scoreboard_p1['turn_count'])
+        game_state[U.TURN_PHASE] = U.TURN_PHASE_LIST[scoreboard_p1['turn_phase']]
+        game_state[U.GAME_DONE] = False #Will assume false for now TODO: Check is this is okay
+
+        # Get the goal sectors
+        game_state[U.GOAL1] = scoreboard_p1['own_hill'][1]
+        game_state[U.GOAL2] = scoreboard_p2['own_hill'][1]
+
+        # Get the scores
+        game_state[p1_id][U.SCORE] = positive_binary_to_int(scoreboard_p1['own_score'][1])
+        game_state[p2_id][U.SCORE] = positive_binary_to_int(scoreboard_p2['own_score'][1])
+
+        # Get the token catalog. Use the local kothgame token catalog and just update each token's states
+        local_token_catalog = self.kothgame.token_catalog
+        p1_state = []
+        p2_state = []
+        bludger_counter = 0
+        for t in tokens_p1:
+            player = p1_id
+            role = U.PIECE_ROLES[t[1]]
+            if role == U.BLUDGER:
+                bludger_counter += 1
+                token_num = bludger_counter
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            else:
+                token_num = 0
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            position = t[2]
+            fuel = positive_binary_to_int(t[3])
+            ammo = positive_binary_to_int(t[4])
+            local_token_catalog[token_name] = \
+                KOTHTokenState(
+                    Satellite(fuel=fuel, ammo=ammo), role=role, position=position
+                )
+            p1_state.append(local_token_catalog[token_name])
+     
+        bludger_counter = 0
+        for t in tokens_p2:
+            player = p2_id
+            role = U.PIECE_ROLES[t[1]]
+            if role == U.BLUDGER:
+                bludger_counter += 1
+                token_num = bludger_counter
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            else:
+                token_num = 0
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            position = t[2]
+            fuel = positive_binary_to_int(t[3])
+            ammo = positive_binary_to_int(t[4])
+            local_token_catalog[token_name] = \
+                KOTHTokenState(
+                    Satellite(fuel=fuel, ammo=ammo), role=role, position=position
+                )
+            p2_state.append(local_token_catalog[token_name])
+
+        # Add the token states to the game state
+        game_state[p1_id][U.TOKEN_STATES] = p1_state #p1state
+        game_state[p2_id][U.TOKEN_STATES] = p2_state #p2state
+        
+        #update token adjancency
+        game_state[U.TOKEN_ADJACENCY] = koth.get_token_adjacency_graph(self.kothgame.board_grid, local_token_catalog)
+
+        # Update legal actions
+        game_state[U.LEGAL_ACTIONS] = koth.get_legal_verbose_actions(
+            turn_phase=game_state[U.TURN_PHASE],
+            token_catalog=local_token_catalog,
+            board_grid=self.kothgame.board_grid,
+            token_adjacency_graph=game_state[U.TOKEN_ADJACENCY],
+            min_ring=self.kothgame.inargs.min_ring,
+            max_ring=self.kothgame.inargs.max_ring)
+        
+        #Set the fuel score for each play based on current fuel and current score
+        fuel_point_alpha = self.kothgame.get_fuel_points(U.P1)
+        fuel_point_beta = self.kothgame.get_fuel_points(U.P2)
+        game_state[p1_id][U.FUEL_SCORE] = fuel_point_alpha
+        game_state[p2_id][U.FUEL_SCORE] = fuel_point_beta
+
+        self.kothgame.game_state = game_state
+        self.kothgame.token_catalog = local_token_catalog
+        self.kothgame.n_tokens_alpha = len(p1_state)
+        self.kothgame.n_tokens_beta = len(p2_state)
+
+        return game_state, local_token_catalog, len(p1_state), len(p2_state)
 
     def decode_all_flat_actions(self, actions):
         '''return decoded, verbose actions for all players'''
@@ -2405,3 +2525,17 @@ def get_binary_observation(val, n_bits):
     obs_val[-len(val_bin):] = val_bin
 
     return obs_val
+
+def binary_to_int(bin_array):
+    '''convert little-endian binary array to int.
+    Negative numbers start with 1, positive start with zero
+    '''
+    is_neg = bin_array[0]
+    val = int(''.join(map(str, [int(i) for i in bin_array[1:]])), 2)
+    return -val if is_neg else val
+
+def positive_binary_to_int(bin_array):
+    '''convert little-endian binary array to int.
+    '''
+    val = int(''.join(map(str, [int(i) for i in bin_array])), 2)
+    return val
