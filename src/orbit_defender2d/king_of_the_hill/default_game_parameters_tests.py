@@ -29,11 +29,11 @@ else:
     raise ValueError("MIN_RING must be >= 1")
 
 ########### initial token placement and attributes ############
-#INIT_BOARD_PATTERN_P1 = [(-2,0), (-1,1), (0,2), (1,0), (2,0)] # (relative azim, number of pieces)
-#INIT_BOARD_PATTERN_P2 = [(-2,1), (-1,2), (0,2), (1,2), (2,0)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN_P1 = [(-2,2), (-1,2), (0,2), (1,2), (2,2)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN_P2 = [(-2,0), (-1,2), (0,2), (1,0), (2,0)] # (relative azim, number of pieces)
 
-INIT_BOARD_PATTERN_P1 = [(0, 0), (0, 2), (-1, 2), (1, 2)]
-INIT_BOARD_PATTERN_P2 = [(0, 0), (0, 2), (-1, 2), (1, 2)]
+#INIT_BOARD_PATTERN_P1 = [(0, 0), (0, 2), (-1, 2), (1, 2)]
+#INIT_BOARD_PATTERN_P2 = [(0, 0), (0, 2), (-1, 2), (1, 2)]
 
 #Sort the patterns by azimuth
 INIT_BOARD_PATTERN_P1 = sorted(INIT_BOARD_PATTERN_P1, key=lambda x: x[0])
@@ -62,11 +62,11 @@ INIT_FUEL = {
 INIT_AMMO = {
     U.P1:{
         U.SEEKER:   0,
-        U.BLUDGER:  2,
+        U.BLUDGER:  0,
         },
     U.P2:{
         U.SEEKER:   0,
-        U.BLUDGER:  0,
+        U.BLUDGER:  4,
         },
     }
 
@@ -119,12 +119,12 @@ ENGAGE_PROBS = {
             U.NOOP: 1.0,
             U.SHOOT: 0.8, 
             U.COLLIDE: 0.8,
-            U.GUARD: 0.9},
+            U.GUARD: 0.8},
         U.ADJ_SEC:{
             U.NOOP: 1.0,
             U.SHOOT: 0.4, #These should be lower, maybe 0.3,0.4,0.5
             U.COLLIDE: 0.4,
-            U.GUARD: 0.5
+            U.GUARD: 0.4
         }
     },
     U.P2:{
@@ -132,12 +132,12 @@ ENGAGE_PROBS = {
             U.NOOP: 1.0,
             U.SHOOT: 0.8, 
             U.COLLIDE: 0.8,
-            U.GUARD: 0.9},
+            U.GUARD: 0.8},
         U.ADJ_SEC:{
             U.NOOP: 1.0,
             U.SHOOT: 0.4, #These should be lower, maybe 0.3,0.4,0.5
             U.COLLIDE: 0.4,
-            U.GUARD: 0.5
+            U.GUARD: 0.4
         }
     }
 }
@@ -155,17 +155,17 @@ ADJ_GOAL_POINTS = {
 
 FUEL_POINTS_FACTOR = {
     U.P1:1.0,
-    U.P2:1.0
+    U.P2:2.0
     }
 
 FUEL_POINTS_FACTOR_BLUDGER = {
     U.P1:0.1,
-    U.P2:0.1
+    U.P2:0.0
     }
 
 WIN_SCORE = {
-    U.P1:500.0,
-    U.P2:500.0
+    U.P1:350.0,
+    U.P2:350.0
     }
 
 ILLEGAL_ACT_SCORE = -1000.0

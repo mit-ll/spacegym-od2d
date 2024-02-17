@@ -28,7 +28,7 @@ from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for som
 import orbit_defender2d.utils.utils as U
 #import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_old as DGP
-import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+import orbit_defender2d.king_of_the_hill.default_game_parameters_tests as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC

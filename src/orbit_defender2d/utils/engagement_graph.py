@@ -99,7 +99,7 @@ class EngagementGraph:
                     success=False))
 
             else:
-
+                guard_count = 0
                 # randomize order for edge evaluation
                 np.random.shuffle(in_att_edges)
 
@@ -123,8 +123,8 @@ class EngagementGraph:
                         guardian=grd_src, 
                         prob=decayed_guard_prob, 
                         success=success))
-                    
-                    decayed_guard_prob *= guard_prob
+                    guard_count += 1
+                    decayed_guard_prob = guard_prob * (0.5**guard_count)
 
         return guard_outcomes
         
