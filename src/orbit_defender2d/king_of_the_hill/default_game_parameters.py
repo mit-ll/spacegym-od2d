@@ -29,8 +29,8 @@ else:
     raise ValueError("MIN_RING must be >= 1")
 
 ########### initial token placement and attributes ############
-INIT_BOARD_PATTERN_P1 = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
-INIT_BOARD_PATTERN_P2 = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN_P1 = [(-2,2), (-1,2), (0,2), (1,2), (2,2)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN_P2 = [(-2,2), (-1,2), (0,2), (1,2), (2,2)] # (relative azim, number of pieces)
 
 NUM_TOKENS_PER_PLAYER = {
     U.P1: sum([a[1] for a in INIT_BOARD_PATTERN_P1])+1, #Get the number of tokens per player, plus 1 for the seeker
@@ -50,12 +50,12 @@ INIT_FUEL = {
 
 INIT_AMMO = {
     U.P1:{
-        U.SEEKER:   10,
-        U.BLUDGER:  2,
+        U.SEEKER:   0,
+        U.BLUDGER:  4,
         },
     U.P2:{
-        U.SEEKER:   10,
-        U.BLUDGER:  2,
+        U.SEEKER:   0,
+        U.BLUDGER:  4,
         },
     }
 
@@ -71,13 +71,13 @@ FUEL_USAGE = {
         U.RADIAL_IN: 10.0, #These should be higher, probably 10, was 5
         U.RADIAL_OUT: 10.0,
         U.IN_SEC:{
-            U.SHOOT: 5.0,
-            U.COLLIDE: 20.0,
+            U.SHOOT: 10.0,
+            U.COLLIDE: 10.0,
             U.GUARD: 5.0
         },
         U.ADJ_SEC:{
-            U.SHOOT: 7.0, #increased from 5
-            U.COLLIDE: 30.0, #Should be higher, was 20
+            U.SHOOT: 10.0, #increased from 5
+            U.COLLIDE: 20.0, #Should be higher, was 20
             U.GUARD: 10.0
         }
     },
@@ -89,13 +89,13 @@ FUEL_USAGE = {
         U.RADIAL_IN: 10.0, #These should be higher, probably 10, was 5
         U.RADIAL_OUT: 10.0,
         U.IN_SEC:{
-            U.SHOOT: 5.0,
-            U.COLLIDE: 20.0,
+            U.SHOOT: 10.0,
+            U.COLLIDE: 10.0,
             U.GUARD: 5.0
         },
         U.ADJ_SEC:{
-            U.SHOOT: 7.0, #increased from 5
-            U.COLLIDE: 30.0, #Should be higher, was 20
+            U.SHOOT: 10.0, #increased from 5
+            U.COLLIDE: 20.0, #Should be higher, was 20
             U.GUARD: 10.0
         }
     }
@@ -106,27 +106,27 @@ ENGAGE_PROBS = {
     U.P1:{
         U.IN_SEC:{
             U.NOOP: 1.0,
-            U.SHOOT: 0.7, 
+            U.SHOOT: 0.8, 
             U.COLLIDE: 0.8,
-            U.GUARD: 0.9},
+            U.GUARD: 0.8},
         U.ADJ_SEC:{
             U.NOOP: 1.0,
-            U.SHOOT: 0.3, #These should be lower, maybe 0.3,0.4,0.5
+            U.SHOOT: 0.4, #These should be lower, maybe 0.3,0.4,0.5
             U.COLLIDE: 0.4,
-            U.GUARD: 0.5
+            U.GUARD: 0.4
         }
     },
     U.P2:{
         U.IN_SEC:{
             U.NOOP: 1.0,
-            U.SHOOT: 0.7, 
+            U.SHOOT: 0.8, 
             U.COLLIDE: 0.8,
-            U.GUARD: 0.9},
+            U.GUARD: 0.8},
         U.ADJ_SEC:{
             U.NOOP: 1.0,
-            U.SHOOT: 0.3, #These should be lower, maybe 0.3,0.4,0.5
+            U.SHOOT: 0.4, #These should be lower, maybe 0.3,0.4,0.5
             U.COLLIDE: 0.4,
-            U.GUARD: 0.5
+            U.GUARD: 0.4
         }
     }
 }
@@ -153,8 +153,8 @@ FUEL_POINTS_FACTOR_BLUDGER = {
     }
 
 WIN_SCORE = {
-    U.P1:250.0,
-    U.P2:250.0
+    U.P1:500.0,
+    U.P2:500.0
     }
 
 ILLEGAL_ACT_SCORE = -1000.0

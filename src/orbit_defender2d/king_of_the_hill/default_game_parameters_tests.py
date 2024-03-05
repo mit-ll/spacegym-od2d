@@ -30,7 +30,7 @@ else:
 
 ########### initial token placement and attributes ############
 INIT_BOARD_PATTERN_P1 = [(-2,2), (-1,2), (0,2), (1,2), (2,2)] # (relative azim, number of pieces)
-INIT_BOARD_PATTERN_P2 = [(-2,0), (-1,2), (0,2), (1,0), (2,0)] # (relative azim, number of pieces)
+INIT_BOARD_PATTERN_P2 = [(-2,0), (-1,2), (0,2), (1,2), (2,0)] # (relative azim, number of pieces)
 
 #INIT_BOARD_PATTERN_P1 = [(0, 0), (0, 2), (-1, 2), (1, 2)]
 #INIT_BOARD_PATTERN_P2 = [(0, 0), (0, 2), (-1, 2), (1, 2)]
@@ -55,7 +55,7 @@ INIT_FUEL = {
         },
     U.P2:{
         U.SEEKER:   100.0,
-        U.BLUDGER:  100.0,
+        U.BLUDGER:  60.0,
         }
     }
 
@@ -159,7 +159,7 @@ FUEL_POINTS_FACTOR = {
     }
 
 FUEL_POINTS_FACTOR_BLUDGER = {
-    U.P1:0.1,
+    U.P1:0.0,
     U.P2:0.0
     }
 
