@@ -151,7 +151,7 @@ def pol2cart(r, a, c):
 class parallel_env(ParallelEnv):
     metadata = {'render.modes': ['human'], "name": "rps_v1"}
 
-    def __init__(self, game_params=None, rllib_env_config=None):
+    def __init__(self, game_params=None, rllib_env_config=None, training_randomize=False, **kwargs):
         '''
         The init method takes in environment arguments and should define the following attributes:
         - possible_agents
@@ -202,6 +202,10 @@ class parallel_env(ParallelEnv):
             self.workerid = rllib_env_config.worker_index
         else:
             self.workerid = None
+
+        if training_randomize:
+            #If this flag is set, then train on randomized, but symmetric, initial game states
+            self.kothgame.randomize_game_params()
 
         # Rendering variables
         # Rendering not always used
