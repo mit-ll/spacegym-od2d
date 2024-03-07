@@ -28,7 +28,7 @@ from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for som
 import orbit_defender2d.utils.utils as U
 #import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_old as DGP
-import orbit_defender2d.king_of_the_hill.default_game_parameters_tests as DGP
+import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC
@@ -590,10 +590,10 @@ class parallel_env(ParallelEnv):
                           (legend_pos[0] + (7.4 * lb_font_size[0]), legend_pos[1] + (3.75 * lb_font_size[1])))
 
         # display team / player titles
-        p1_title = self._large_font_bold.render("Alpha", True, self._p1_color)
+        p1_title = self._large_font_bold.render(U.P1, True, self._p1_color)
         self._screen.blit(p1_title, (x_mid - (24 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
 
-        p2_title = self._large_font_bold.render("Beta", True, self._p2_color)
+        p2_title = self._large_font_bold.render(U.P2, True, self._p2_color)
         self._screen.blit(p2_title, (x_mid + (20 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
 
         guarded_tokens = dict()  # tracks which tokens are being guarded, stores data for displaying guard counts

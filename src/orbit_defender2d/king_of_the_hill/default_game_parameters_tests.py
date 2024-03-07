@@ -18,7 +18,7 @@
 import orbit_defender2d.utils.utils as U
 
 ########### board sizing ############
-MAX_RING = 5
+MAX_RING = 4
 MIN_RING = 1
 GEO_RING = 4
 if MIN_RING == 1:
@@ -159,7 +159,7 @@ FUEL_POINTS_FACTOR = {
     }
 
 FUEL_POINTS_FACTOR_BLUDGER = {
-    U.P1:0.0,
+    U.P1:0.1,
     U.P2:0.0
     }
 

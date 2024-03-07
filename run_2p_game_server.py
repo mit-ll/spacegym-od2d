@@ -8,7 +8,7 @@ import numpy as np
 import orbit_defender2d.utils.utils as U
 import copy
 import orbit_defender2d.king_of_the_hill.pettingzoo_env as PZE
-import orbit_defender2d.king_of_the_hill.default_game_parameters_OD as DGP
+import orbit_defender2d.king_of_the_hill.default_game_parameters_tests as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_small as DGP
 from orbit_defender2d.king_of_the_hill import koth
 from orbit_defender2d.king_of_the_hill import game_server as GS

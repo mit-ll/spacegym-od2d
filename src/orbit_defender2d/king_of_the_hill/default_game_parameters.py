@@ -18,7 +18,7 @@
 import orbit_defender2d.utils.utils as U
 
 ########### board sizing ############
-MAX_RING = 5
+MAX_RING = 4
 MIN_RING = 1
 GEO_RING = 4
 if MIN_RING == 1:
@@ -71,12 +71,12 @@ FUEL_USAGE = {
         U.RADIAL_IN: 10.0, #These should be higher, probably 10, was 5
         U.RADIAL_OUT: 10.0,
         U.IN_SEC:{
-            U.SHOOT: 10.0,
+            U.SHOOT: 5.0,
             U.COLLIDE: 10.0,
             U.GUARD: 5.0
         },
         U.ADJ_SEC:{
-            U.SHOOT: 10.0, #increased from 5
+            U.SHOOT: 5.0, #increased from 5
             U.COLLIDE: 20.0, #Should be higher, was 20
             U.GUARD: 10.0
         }
@@ -89,12 +89,12 @@ FUEL_USAGE = {
         U.RADIAL_IN: 10.0, #These should be higher, probably 10, was 5
         U.RADIAL_OUT: 10.0,
         U.IN_SEC:{
-            U.SHOOT: 10.0,
+            U.SHOOT: 5.0,
             U.COLLIDE: 10.0,
             U.GUARD: 5.0
         },
         U.ADJ_SEC:{
-            U.SHOOT: 10.0, #increased from 5
+            U.SHOOT: 5.0, #increased from 5
             U.COLLIDE: 20.0, #Should be higher, was 20
             U.GUARD: 10.0
         }
