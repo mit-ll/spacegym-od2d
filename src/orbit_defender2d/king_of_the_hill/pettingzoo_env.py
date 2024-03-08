@@ -62,6 +62,7 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
 
 #Set max ammo for later tests
 MAX_AMMO = 10
+MAX_N_TOKENS = 11
 # observation space flat encoding
 # Note: hard-coding and then cross checking in order
 # to avoid in-advertant observation space dimension changes
@@ -83,7 +84,7 @@ N_BITS_OBS_AMMO = max(
     len(U.int2bitlist(MAX_AMMO)))
 N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
 #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
-N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2])) #number of tokens per player * bits per token
+N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #number of tokens per player * bits per token
 N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
 # cross-check hard-coded bit sizes with variables upon which they depend
@@ -105,8 +106,8 @@ assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_O
 # action space flat encoding
 # Note: hard-coding and then cross checking in order
 # to avoid inadvertent observation space dimension changes
-N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2]))  #should be movement types + engagement types*tokens per player
-N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2])) #should be tokens per player * bits per token action
+N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS))  #should be movement types + engagement types*tokens per player
+N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #should be tokens per player * bits per token action
 
 def env(game_params=None,rllib_env_config=None):
     '''
@@ -151,7 +152,7 @@ def pol2cart(r, a, c):
 class parallel_env(ParallelEnv):
     metadata = {'render.modes': ['human'], "name": "rps_v1"}
 
-    def __init__(self, game_params=None, rllib_env_config=None, training_randomize=False, **kwargs):
+    def __init__(self, game_params=None, rllib_env_config=None, training_randomize=True, **kwargs):
         '''
         The init method takes in environment arguments and should define the following attributes:
         - possible_agents

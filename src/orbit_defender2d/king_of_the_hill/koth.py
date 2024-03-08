@@ -163,21 +163,28 @@ class KOTHGame:
 
     def randomize_game_params(self):
         '''
-        Randomize game parameters for training purposes
+        Randomize initial game parameters for training purposes
         '''
+        #Only randomize 50% of the time
+        if np.random.rand() < 0.50:
+            return
         #Get the range for number of tokens, fuel, and ammo
-        n_tokens_choices = np.arange(1, self.n_tokens_alpha + 1)
-        fuel_choices = np.arange(20, self.inargs.init_fuel[U.P1][U.BLUDGER] + 1, 20)
-        ammo_choices = np.arange(0, self.inargs.init_ammo[U.P1][U.BLUDGER] + 1, 1)
+        #n_tokens_choices = np.arange(4, self.n_tokens_alpha,1)
+        #fuel_choices = np.arange(40, self.inargs.init_fuel[U.P1][U.BLUDGER] + 1, 20)
+        #ammo_choices = np.arange(0, self.inargs.init_ammo[U.P2][U.BLUDGER] + 1, 1)
+        n_tokens_choices = np.arange(2, 11,1)
+        fuel_choices = np.arange(40, 100 + 1, 20)
+        ammo_choices = np.arange(0, 4 + 1, 1)
+
+        #Randomize the number of tokens, fuel, and ammo for each player with a normal distribution
+        #new_n_tokens = n_tokens_choices[normal_choice_from_list(len(n_tokens_choices))]
+        #new_fuel_val = fuel_choices[normal_choice_from_list(len(fuel_choices))]
+        #new_ammo_val = ammo_choices[normal_choice_from_list(len(ammo_choices))]
         
-        #Randomize the number of tokens, fuel, and ammo for each player
+        #Or, just use a uniform distribution
         new_n_tokens = np.random.choice(n_tokens_choices)
         new_fuel_val = np.random.choice(fuel_choices)
         new_ammo_val = np.random.choice(ammo_choices)
-        print("New number of tokens: ", new_n_tokens)
-        print("New fuel value: ", new_fuel_val)
-        print("New ammo value: ", new_ammo_val)
-
 
         #Get new initial board patterns
         new_init_board_pattern_p1 = init_board_pattern(new_n_tokens)
@@ -1495,6 +1502,32 @@ def log_game_to_file(game, logfile, actions=None):
                 raise ValueError("Unrecognized game phase {}".format(phase))
             f.close()
             return
+def normal_choice_from_list(length_of_list, stddev=1.5, mean=None):
+    '''Choose a random element from a list of choices
+    Ensure that choies are normally disctirbuted with the 
+    middle elements as the mean and the end elements as 
+    1.5 standard deviations from the mean
+    '''
+    #Get the mean and standard deviation
+    if mean is None:
+        mean = length_of_list/2-0.5
+    if stddev is None:
+        std_dev = length_of_list/3
+    else:
+        std_dev = length_of_list/(stddev*2)
+
+    #Get a random number from a normal dist with mean and std_dev
+    normal_choice = int(np.random.normal(mean, std_dev))
+    #If the choice is less than 0, set it to 0
+    if normal_choice < 0:
+        normal_choice = 0
+    #If the choice is greater than the length of the list, set it to the length of the list
+    if normal_choice > length_of_list-1:
+        normal_choice = length_of_list-1
+    
+    return normal_choice
+
+ 
 
 def init_board_pattern(n_tokens):
     '''
@@ -1509,21 +1542,29 @@ def init_board_pattern(n_tokens):
 
     The output is a list of touples. It is sorted by increasing azimuth relative to the goal sector.
     '''
-    board_pattern = [(0,0)] 
+    if n_tokens == 0:
+        return (0,0)
+    
+    board_pattern = [] 
     position = 0
+   
     while sum(a[1] for a in board_pattern) < n_tokens:
-        # Add two tokens at the current position, if there are enough tokens left
-        if sum(a[1] for a in board_pattern) + 2 <= n_tokens:
-            board_pattern.append((position, 2))
-        # If there's only one token left, add it at the current position
-        elif sum(a[1] for a in board_pattern) + 1 == n_tokens:
-            board_pattern.append((position, 1))
-        # Move to the next position
-        if position >= 0:
-            position = -(position + 1)
+        #Add up to 2 tokens to each position, starting at the goal sector and moving outwards in both diections, until no tokens are left
+        #Add the tokens one at a time
+    
+        #Add a board position to the list
+        board_pattern.insert(0,(position, 0))
+        for idx, board_pos in enumerate(board_pattern):
+            if board_pos[1] < 2 and sum(a[1] for a in board_pattern) < n_tokens:
+                #Add a token to the position
+                board_pattern[idx] = (board_pos[0], board_pos[1]+1)
+        #Move to the next position (alternating between positive and negative azimuth)
+        if len(board_pattern) % 2 == 1:
+            position = -1*position +1
         else:
-            position = -position
-    #sort the final list by azimuth (the first element of each tuple)
+            position = -1*position 
+
+
     board_pattern = sorted(board_pattern, key=lambda x: x[0])
     
     assert sum(a[1] for a in board_pattern) == n_tokens, f"board_pattern has {len(board_pattern)} tokens, but n_tokens_X is {n_tokens}"

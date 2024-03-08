@@ -18,7 +18,7 @@
 import orbit_defender2d.utils.utils as U
 
 ########### board sizing ############
-MAX_RING = 4
+MAX_RING = 5
 MIN_RING = 1
 GEO_RING = 4
 if MIN_RING == 1:
