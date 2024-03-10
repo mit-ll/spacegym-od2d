@@ -166,34 +166,70 @@ class KOTHGame:
         Randomize initial game parameters for training purposes
         '''
         #Only randomize 50% of the time
-        if np.random.rand() < 0.50:
+        if np.random.rand() < 0.25:
             return
-        #Get the range for number of tokens, fuel, and ammo
-        #n_tokens_choices = np.arange(4, self.n_tokens_alpha,1)
-        #fuel_choices = np.arange(40, self.inargs.init_fuel[U.P1][U.BLUDGER] + 1, 20)
-        #ammo_choices = np.arange(0, self.inargs.init_ammo[U.P2][U.BLUDGER] + 1, 1)
-        n_tokens_choices = np.arange(2, 11,1)
-        fuel_choices = np.arange(40, 100 + 1, 20)
-        ammo_choices = np.arange(0, 4 + 1, 1)
-
-        #Randomize the number of tokens, fuel, and ammo for each player with a normal distribution
-        #new_n_tokens = n_tokens_choices[normal_choice_from_list(len(n_tokens_choices))]
-        #new_fuel_val = fuel_choices[normal_choice_from_list(len(fuel_choices))]
-        #new_ammo_val = ammo_choices[normal_choice_from_list(len(ammo_choices))]
         
-        #Or, just use a uniform distribution
-        new_n_tokens = np.random.choice(n_tokens_choices)
-        new_fuel_val = np.random.choice(fuel_choices)
-        new_ammo_val = np.random.choice(ammo_choices)
+        symmetry_flag = np.random.choice([0,1], p=[0.8, 0.2])
+        if symmetry_flag:
+            #Get the range for number of tokens, fuel, and ammo
+            #n_tokens_choices = np.arange(4, self.n_tokens_alpha,1)
+            #fuel_choices = np.arange(40, self.inargs.init_fuel[U.P1][U.BLUDGER] + 1, 20)
+            #ammo_choices = np.arange(0, self.inargs.init_ammo[U.P2][U.BLUDGER] + 1, 1)
+            n_tokens_choices = np.arange(4, 11,1)
+            fuel_choices = np.arange(40, 100 + 1, 20)
+            ammo_choices = np.arange(0, 4 + 1, 1)
 
-        #Get new initial board patterns
-        new_init_board_pattern_p1 = init_board_pattern(new_n_tokens)
-        new_init_board_pattern_p2 = init_board_pattern(new_n_tokens)
+            #Randomize the number of tokens, fuel, and ammo for each player with a normal distribution
+            new_n_tokens = n_tokens_choices[normal_choice_from_list(len(n_tokens_choices))]
+            new_fuel_val = fuel_choices[normal_choice_from_list(len(fuel_choices))]
+            new_ammo_val = ammo_choices[normal_choice_from_list(len(ammo_choices))]
+            
+            #Or, just use a uniform distribution
+            #new_n_tokens = np.random.choice(n_tokens_choices)
+            #new_fuel_val = np.random.choice(fuel_choices)
+            #new_ammo_val = np.random.choice(ammo_choices)
 
-        #Get new ammo and fuel input dictionaries
-        new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: new_fuel_val}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: new_fuel_val}}
-        new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: new_ammo_val}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: new_ammo_val}}
+            #Get new initial board patterns
+            new_init_board_pattern_p1 = init_board_pattern(new_n_tokens)
+            new_init_board_pattern_p2 = init_board_pattern(new_n_tokens)
 
+            #Get new ammo and fuel input dictionaries
+            new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: new_fuel_val}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: new_fuel_val}}
+            new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: new_ammo_val}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: new_ammo_val}}
+        
+            #Fuel points factors don't change
+            new_fuel_points_factor = self.inargs.fuel_points_factor
+            new_fuel_points_factor_bludger = self.inargs.fuel_points_factor_bludger
+
+        else:
+            #make a (hopefully) evenly matched asymmetric game
+            #randomize alpha or beta being defenisve player
+            defensive_n_tokens = np.random.choice([4,5,6])
+            offensive_n_tokens = np.random.choice([8,9,10])
+            defensive_fuel = 60
+            offensive_fuel = 100
+            defensive_ammo = 4
+            offensive_ammo = 0
+            seeker_fuel_points_factor_offense = 1.0
+            seeker_fuel_points_factor_defense = 1.2
+            bludger_fuel_points_factor_offense = offensive_n_tokens/100
+            bludger_fuel_points_factor_defense = defensive_n_tokens/100
+
+            if np.random.rand() < 0.5:
+                new_init_board_pattern_p1 = init_board_pattern(defensive_n_tokens)
+                new_init_board_pattern_p2 = init_board_pattern(offensive_n_tokens)
+                new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: defensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: offensive_fuel}}
+                new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: defensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: offensive_ammo}}
+                new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_defense, U.P2: seeker_fuel_points_factor_offense}
+                new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_defense, U.P2: bludger_fuel_points_factor_offense}
+            else:
+                new_init_board_pattern_p1 = init_board_pattern(offensive_n_tokens)
+                new_init_board_pattern_p2 = init_board_pattern(defensive_n_tokens)
+                new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: offensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: defensive_fuel}}
+                new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: offensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: defensive_ammo}}
+                new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_offense, U.P2: seeker_fuel_points_factor_defense}
+                new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_offense, U.P2: bludger_fuel_points_factor_defense}
+           
         #Update the game params and reset the game
         new_params = KOTHGameInputArgs(
             max_ring=self.inargs.max_ring,
@@ -205,16 +241,18 @@ class KOTHGame:
             init_fuel=new_fuel,
             init_ammo=new_ammo,
 
+            fuel_points_factor_bludger=new_fuel_points_factor_bludger,
+            fuel_points_factor=new_fuel_points_factor,
+
             min_fuel=self.inargs.min_fuel,
             fuel_usage=self.inargs.fuel_usage,
             engage_probs=self.inargs.engage_probs,
             illegal_action_score=self.inargs.illegal_action_score,
             in_goal_points=self.inargs.in_goal_points,
             adj_goal_points=self.inargs.adj_goal_points,
-            fuel_points_factor=self.inargs.fuel_points_factor,
             win_score=self.inargs.win_score,
             max_turns=self.inargs.max_turns,
-            fuel_points_factor_bludger=self.inargs.fuel_points_factor_bludger,
+            
         )
         self.inargs = new_params
         self.reset_game()
@@ -1506,13 +1544,13 @@ def normal_choice_from_list(length_of_list, stddev=1.5, mean=None):
     '''Choose a random element from a list of choices
     Ensure that choies are normally disctirbuted with the 
     middle elements as the mean and the end elements as 
-    1.5 standard deviations from the mean
+    1 standard deviations from the mean
     '''
     #Get the mean and standard deviation
     if mean is None:
         mean = length_of_list/2-0.5
     if stddev is None:
-        std_dev = length_of_list/3
+        std_dev = length_of_list/2
     else:
         std_dev = length_of_list/(stddev*2)
 
