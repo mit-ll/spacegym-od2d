@@ -109,7 +109,7 @@ assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_O
 N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS))  #should be movement types + engagement types*tokens per player
 N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #should be tokens per player * bits per token action
 
-def env(game_params=None,rllib_env_config=None,training_randomize=None):
+def env(game_params=None,rllib_env_config=None,training_randomize=None, plr_aliases=None):
     '''
     The env function wraps the environment in 3 wrappers by default. These
     wrappers contain logic that is common to many pettingzoo environments.
@@ -117,20 +117,20 @@ def env(game_params=None,rllib_env_config=None,training_randomize=None):
     to provide sane error messages. You can find full documentation for these methods
     elsewhere in the developer documentation.
     '''
-    env = raw_env(game_params=game_params, rllib_env_config=rllib_env_config, training_randomize=training_randomize)
+    env = raw_env(game_params=game_params, rllib_env_config=rllib_env_config, training_randomize=training_randomize, plr_aliases=plr_aliases)
     env = wrappers.CaptureStdoutWrapper(env)
     # env = wrappers.AssertOutOfBoundsWrapper(env)
     env = wrappers.OrderEnforcingWrapper(env)
     return env
 
-def raw_env(game_params=None, rllib_env_config=None, training_randomize=None):
+def raw_env(game_params=None, rllib_env_config=None, training_randomize=None, plr_aliases=None):
     '''
     To support the AEC API, the raw_env() function just uses the parallel_to_aec
     function to convert from a ParallelEnv to an AEC env
 
     See: https://www.pettingzoo.ml/environment_creation#example-custom-parallel-environment
     '''
-    env = parallel_env(game_params=game_params,rllib_env_config=rllib_env_config, training_randomize=training_randomize)
+    env = parallel_env(game_params=game_params,rllib_env_config=rllib_env_config, training_randomize=training_randomize, plr_aliases=plr_aliases)
     env = parallel_to_aec(env)
     return env
 
@@ -152,7 +152,7 @@ def pol2cart(r, a, c):
 class parallel_env(ParallelEnv):
     metadata = {'render.modes': ['human'], "name": "rps_v1"}
 
-    def __init__(self, game_params=None, rllib_env_config=None, training_randomize=None, **kwargs):
+    def __init__(self, game_params=None, rllib_env_config=None, training_randomize=None,plr_aliases=None, **kwargs):
         '''
         The init method takes in environment arguments and should define the following attributes:
         - possible_agents
@@ -207,6 +207,13 @@ class parallel_env(ParallelEnv):
         if training_randomize:
             #If this flag is set, then train on randomized, but symmetric, initial game states
             self.kothgame.randomize_game_params()
+
+        if plr_aliases is not None:
+            self.plr1_alias = plr_aliases[0]
+            self.plr2_alias = plr_aliases[1]
+        else:
+            self.plr1_alias = U.P1
+            self.plr2_alias = U.P2
 
         # Rendering variables
         # Rendering not always used
@@ -336,8 +343,8 @@ class parallel_env(ParallelEnv):
 
         if mode == "human" or mode == "debug":
             self._screen.fill(self._bg_color)
-            self._draw_earth()
             self._draw_board()
+            self._draw_earth()
             self._draw_details()
             self._draw_tokens()
             pg.display.update()
@@ -595,11 +602,11 @@ class parallel_env(ParallelEnv):
                           (legend_pos[0] + (7.4 * lb_font_size[0]), legend_pos[1] + (3.75 * lb_font_size[1])))
 
         # display team / player titles
-        p1_title = self._large_font_bold.render(U.P1, True, self._p1_color)
-        self._screen.blit(p1_title, (x_mid - (24 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
+        p1_title = self._large_font_bold.render(self.plr1_alias, True, self._p1_color)
+        self._screen.blit(p1_title, (x_mid - (28 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
 
-        p2_title = self._large_font_bold.render(U.P2, True, self._p2_color)
-        self._screen.blit(p2_title, (x_mid + (20 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
+        p2_title = self._large_font_bold.render(self.plr2_alias, True, self._p2_color)
+        self._screen.blit(p2_title, (x_mid + (16 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
 
         guarded_tokens = dict()  # tracks which tokens are being guarded, stores data for displaying guard counts
         attacked_tokens = []  # tracks which tokens are under attack
@@ -613,12 +620,13 @@ class parallel_env(ParallelEnv):
             for token_name, token_state in self.kothgame.token_catalog.items():
                 #There should be actions that are in koth touple format, but they are probably in gym format instead
                 if self.actions:
-                    #print("\n<==== Turn: {} | Phase: {} ====>".format(
-                    #    self.kothgame.game_state[U.TURN_COUNT], 
-                    #    self.kothgame.game_state[U.TURN_PHASE]))
-                    #print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
-                    if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
-                        attacked_tokens.append(token_name)
+                    if token_name in self.actions:
+                        #print("\n<==== Turn: {} | Phase: {} ====>".format(
+                        #    self.kothgame.game_state[U.TURN_COUNT], 
+                        #    self.kothgame.game_state[U.TURN_PHASE]))
+                        #print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
+                        if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
+                            attacked_tokens.append(token_name)
                 else: #TODO: I think this else can be deleted now...
                     if hasattr(self, 'verbose_actions'):
                         #print("Trying engagement with verbose actions")
@@ -634,7 +642,7 @@ class parallel_env(ParallelEnv):
                 continue
             # determine token player (influences color and horizontal alignment)
             split_name = token_name.split(':')
-            if split_name[0] == "alpha":
+            if split_name[0] == U.P1:
                 color = self._p1_color
                 engagement_color = self._p1_color
                 player_x_mid = x_mid - (23 * lb_font_size[0])
@@ -682,19 +690,20 @@ class parallel_env(ParallelEnv):
             pos = token_state.position
             move_str = ""
             if self.actions and self.kothgame.game_state[U.TURN_PHASE] == "movement":
-                    # determine movement type
-                    if self.actions[token_name].action_type == "prograde":
-                        move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
-                    elif self.actions[token_name].action_type == "retrograde":
-                        move_str = " > " + str(self.kothgame.board_grid.get_retrograde_sector(pos))
-                    elif self.actions[token_name].action_type == "radial_in":
-                        move_str = " > " + str(self.kothgame.board_grid.get_radial_in_sector(pos))
-                    elif self.actions[token_name].action_type == "radial_out":
-                        move_str = " > " + str(self.kothgame.board_grid.get_radial_out_sector(pos))
-                    else:
-                        pass
+                    if token_name in self.actions:
+                        # determine movement type
+                        if self.actions[token_name].action_type == "prograde":
+                            move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
+                        elif self.actions[token_name].action_type == "retrograde":
+                            move_str = " > " + str(self.kothgame.board_grid.get_retrograde_sector(pos))
+                        elif self.actions[token_name].action_type == "radial_in":
+                            move_str = " > " + str(self.kothgame.board_grid.get_radial_in_sector(pos))
+                        elif self.actions[token_name].action_type == "radial_out":
+                            move_str = " > " + str(self.kothgame.board_grid.get_radial_out_sector(pos))
+                        else:
+                            pass
             # display engagement or engagement outcomes
-            elif self.actions and hasattr(self.actions[token_name], "target") and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
+            elif self.actions and token_name in self.actions and hasattr(self.actions[token_name], "target") and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
                 # determine target
                 target_name = self.actions[token_name].target
                 target = target_name.split(':')
@@ -711,7 +720,7 @@ class parallel_env(ParallelEnv):
                     # determine attacker
                     # shoot indicator starts at top corner of attacker details, ends at bottom corner of target details
                     # marked by filled triangles
-                    if split_name[0] == "alpha":
+                    if split_name[0] == U.P1:
                         line_start = (x_mid - (5.5 * lb_font_size[0]), player_y_mid - (1.2 * lb_font_size[1]))
                         line_end = (x_mid + (12 * lb_font_size[0]),
                                     self._margins[1] + (8.7 * lb_font_size[1]) +
@@ -764,7 +773,7 @@ class parallel_env(ParallelEnv):
                     # collide indicator starts at top corner of attacker details,
                     # ends at bottom corner of target details
                     # marked by outlined triangles
-                    if split_name[0] == "alpha":
+                    if split_name[0] == U.P1:
                         line_start = (x_mid - (5.5 * lb_font_size[0]), player_y_mid - (1.2 * lb_font_size[1]))
                         line_end = (x_mid + (12 * lb_font_size[0]),
                                     self._margins[1] + (8.7 * lb_font_size[1]) +
@@ -818,7 +827,7 @@ class parallel_env(ParallelEnv):
                     # guard indicator consists of an outlined square and shield
                     # outlined square contains # of target
                     # outlined shield on target contains # of tokens guarding it
-                    if split_name[0] == "alpha":
+                    if split_name[0] == U.P1:
                         shield_center = (x_mid - (10.2 * lb_font_size[0]),
                                          self._margins[1] + (int(target[2]) * (4 * b_font_size[1])) +
                                          (7.6 * lb_font_size[1]))
@@ -954,7 +963,7 @@ class parallel_env(ParallelEnv):
                 # 'BS': Beta Seeker, 'BBA': Beta Bludger Active, 'BBI': Beta Bludger Inactive
                 sector_occupancies[token_state.position] = {'AS': [], 'ABA': [], 'ABI': [],
                                                             'BS': [], 'BBA': [], 'BBI': []}
-            if split_name[0] == "alpha":
+            if split_name[0] == U.P1:
                 if split_name[1] == U.SEEKER:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
                         sector_occupancies[token_state.position]['AS'] = [1]  # track active alpha seeker
@@ -1335,9 +1344,9 @@ class parallel_env(ParallelEnv):
 
     def draw_win(self, winner):
         '''Displays winner clearly and updates score when game finishes'''
-        if winner == "alpha":
+        if winner == U.P1:
             win_color = self._p1_color
-        elif winner == "beta":
+        elif winner == U.P2:
             win_color = self._p2_color
         else:
             win_color = self._null_color
@@ -2409,7 +2418,7 @@ class KOTHObservationSpaces:
         '''
 
         if game.n_tokens_alpha != game.n_tokens_beta:
-            raise NotImplementedError('Both playe must have same number of tokens')
+            raise NotImplementedError('Both players must have same number of tokens')
         n_tokens_per_player = game.n_tokens_alpha
 
         # non-token game observations

@@ -483,16 +483,18 @@ class KOTHGame:
         Returns:
             tuple_engagement_outcomes: List of engagement outcome tuples
         '''
-        tuple_engagement_outcomes = []
+        list_engagement_outcomes = []
+        dict_engagement_outcomes = {}
         for engagement in engagement_outcomes:
-            tuple_engagement_outcomes.append(U.EngagementOutcomeTuple(
+            list_engagement_outcomes.append(U.EngagementOutcomeTuple(
                     action_type=engagement[GS.ACTION_TYPE],
                     attacker=engagement[GS.ATTACKER_ID],
                     target=engagement[GS.TARGET_ID],  
                     guardian=engagement[GS.GUARDIAN_ID], 
                     prob=engagement[GS.PROB], 
                     success=engagement[GS.SUCCESS]))
-        return tuple_engagement_outcomes
+            dict_engagement_outcomes[engagement[GS.ATTACKER_ID]] = list_engagement_outcomes[-1]
+        return list_engagement_outcomes, dict_engagement_outcomes
 
     def update_turn_phase(self, turn_phase: str):
         ''' update game_state with new turn phase; updates adjacency and legal acitons
@@ -1060,7 +1062,7 @@ class KOTHGame:
                         print("Token: {}".format(token_name))
                         print("Fuel Available: {}".format(token_state.satellite.fuel))
                         if len(self.game_state[U.LEGAL_ACTIONS][token_name]) == 1:
-                            print("Only NOOP available")
+                            print("No Actions Available")
                             selection = 0
                             sleep(0.5)
                         else:
@@ -1103,7 +1105,7 @@ class KOTHGame:
                             print("Token ID: {}".format(token_name))
                             print("Fuel Available: {}".format(token_state.satellite.fuel))
                             if len(self.game_state[U.LEGAL_ACTIONS][token_name]) == 1:
-                                print("Only NOOP available")
+                                print("No Actions Available")
                                 selection = 0
                                 sleep(0.5)
                             else:
@@ -1423,7 +1425,8 @@ def print_game_info(game, file=None):
 def print_scores(game, file=None):
     #Print the turn number and the score for each player
     #print("Score at Turn : {} and Phase : {}".format(game.game_state[U.TURN_COUNT], game.game_state[U.TURN_PHASE]))
-    print("alpha score: {}  |  beta score: {}".format(game.game_state[U.P1][U.SCORE],game.game_state[U.P2][U.SCORE]), file=file)
+    print(U.P1+" score: {}".format(game.game_state[U.P1][U.SCORE]), file=file)
+    print(U.P2+" score: {}".format(game.game_state[U.P2][U.SCORE]), file=file)
 
 def print_actions(actions, file=None):
     print("ACTIONS:", file=file)
@@ -1500,13 +1503,13 @@ def print_endgame_status(game, file=None):
 
     cur_game_state = game.game_state
     if cur_game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
-        print("alpha seeker out of fuel", file=file)
+        print(U.P1+" seeker out of fuel", file=file)
     if cur_game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel <= game.inargs.min_fuel:
-        print("beta seeker out of fuel", file=file)
+        print(U.P2+" seeker out of fuel", file=file)
     if cur_game_state[U.P1][U.SCORE] >= game.inargs.win_score[U.P1]:
-        print("alpha reached Win Score", file=file)
+        print(U.P1+" reached Win Score", file=file)
     if cur_game_state[U.P2][U.SCORE]  >= game.inargs.win_score[U.P2]:
-        print("beta reached Win Score", file=file)
+        print(U.P2+" reached Win Score", file=file)
     if cur_game_state[U.TURN_COUNT]  >= game.inargs.max_turns:
         print("max turns reached", file=file)
 

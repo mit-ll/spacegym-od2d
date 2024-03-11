@@ -5,8 +5,8 @@
 from collections import namedtuple
 
 # unified variable names
-P1 = 'alpha'
-P2 = 'beta'
+P1 = 'Alpha'
+P2 = 'Bravo'
 TOKEN_DELIMITER = ':'
 GOAL1 = 'goal_sector_alpha'
 GOAL2 = 'goal_sector_beta'

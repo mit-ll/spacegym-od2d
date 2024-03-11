@@ -33,7 +33,8 @@ def print_game_info(game_state):
     print("STATES:")
     for tok in game_state[GS.TOKEN_STATES]:
         print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(tok[GS.PIECE_ID], tok[GS.POSITION], tok[GS.FUEL]))
-    print("alpha|beta score: {}|{}".format(game_state[GS.SCORE_ALPHA],game_state[GS.SCORE_BETA]))
+    print(U.P1+" score: {}".format(game_state[GS.SCORE_ALPHA]))
+    print(U.P2+" score: {}".format(game_state[GS.SCORE_BETA]))
 
 def print_engagement_outcomes_list(engagement_outcomes, file=None):
     '''
@@ -84,13 +85,13 @@ def print_endgame_statsus(cur_game_state):
     print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score))
 
     if cur_game_state[GS.TOKEN_STATES][0]['fuel'] <= DGP.MIN_FUEL:
-        term_cond = "alpha out of fuel"
+        term_cond = U.P1+" out of fuel"
     elif cur_game_state[GS.TOKEN_STATES][1]['fuel'] <= DGP.MIN_FUEL:
-        term_cond = "beta out of fuel"
+        term_cond = U.P2+" out of fuel"
     elif cur_game_state[GS.SCORE_ALPHA] >= DGP.WIN_SCORE[U.P1]:
-        term_cond = "alpha reached Win Score"
+        term_cond = U.P1+" reached Win Score"
     elif cur_game_state[GS.SCORE_BETA]  >= DGP.WIN_SCORE[U.P2]:
-        term_cond = "beta reached Win Score"
+        term_cond = U.P2+" reached Win Score"
     elif cur_game_state[GS.TURN_NUMBER]  >= DGP.MAX_TURNS:
         term_cond = "max turns reached" 
     else:

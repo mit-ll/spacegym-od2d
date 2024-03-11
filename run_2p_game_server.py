@@ -65,6 +65,7 @@ class ListenerClient(object):
         self.alias = plr_alias
         self.player_id = None
         self.game_state = None
+        self.actions = None
         self.player_registry = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
@@ -239,6 +240,7 @@ class ListenerClient(object):
                     #self.assert_consistent_registry(msg[GS.DATA][GS.PLAYER_REGISTRY])
                     self.game_state = msg[GS.DATA][GS.GAME_STATE]
                     self.player_registry = msg[GS.DATA][GS.PLAYER_REGISTRY]
+                    self.actions = msg[GS.DATA][GS.ACTION_SELECTIONS]
                     if msg[GS.DATA][GS.KIND] == GS.ENGAGE_PHASE_RESP:
                         self.engagement_outcomes = msg[GS.DATA][GS.RESOLUTION_SEQUENCE]
                     assert_valid_game_state(game_state=self.game_state)
@@ -310,15 +312,15 @@ def run_listener(game_server, listener_client, render=True):
     game_started = True
     print("Game started")
     #start logfile
-    p1_alias = plr_reg[0][GS.PLAYER_ID]+":"+plr_reg[0][GS.PLAYER_ALIAS]
-    p2_alias = plr_reg[1][GS.PLAYER_ID]+":"+plr_reg[1][GS.PLAYER_ALIAS]
+    p1_alias = plr_reg[0][GS.PLAYER_ID]+": "+plr_reg[0][GS.PLAYER_ALIAS]
+    p2_alias = plr_reg[1][GS.PLAYER_ID]+": "+plr_reg[1][GS.PLAYER_ALIAS]
     print("Player 1: ", p1_alias)
     print("Player 2: ", p2_alias)
     logfile = koth.start_log_file('./logs/game_log', p1_alias=p1_alias, p2_alias=p2_alias)
 
     if render:
         #Create local penv game to render
-        penv = PZE.parallel_env(game_params=GAME_PARAMS, training_randomize=False)
+        penv = PZE.parallel_env(game_params=GAME_PARAMS, training_randomize=False, plr_aliases=[p1_alias, p2_alias])
         penv.reset()
         penv.render(mode='human')
 
@@ -329,15 +331,25 @@ def run_listener(game_server, listener_client, render=True):
         local_game = penv.kothgame
         local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
         penv.kothgame = local_game
+        if listener_client.actions is not None:
+            new_dict = {}
+            for key, value in listener_client.actions.items():
+                if len(value) == 3: #then it is an engagement 
+                    new_dict[key] = U.EngagementTuple(action_type=value[0], target=value[1], prob=value[2])
+                elif len(value) > 3: #then it is a engagement outcome
+                    new_dict[key] = U.EngagementOutcomeTuple(action_type=value[0], attacker=value[1], target=value[2], guardian=value[3], prob=value[4], success=value[5])
+                elif len(value) == 1: #movement 
+                    new_dict[key] = U.MovementTuple(action_type=value[0])
+            penv.actions = new_dict
 
         if tmp_game_state[GS.TURN_PHASE] != turn_phase:
             koth.print_game_info(local_game)
             koth.log_game_to_file(local_game, logfile)
-            if tmp_game_state[GS.TURN_PHASE] == U.DRIFT:
-                if hasattr(listener_client, 'engagement_outcomes'):
-                    with open(logfile, 'a') as f:
-                        print_engagement_outcomes_list(listener_client.engagement_outcomes, file=f)
-                        f.close()
+            # if tmp_game_state[GS.TURN_PHASE] == U.DRIFT:
+            #     if hasattr(listener_client, 'engagement_outcomes'):
+            #         with open(logfile, 'a') as f:
+            #             print_engagement_outcomes_list(listener_client.engagement_outcomes, file=f)
+            #             f.close()
             turn_phase = tmp_game_state[GS.TURN_PHASE]
         
         if render:

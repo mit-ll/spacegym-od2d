@@ -51,6 +51,7 @@ TOKEN_STATE_FIELDS = [PIECE_ID, FUEL, ROLE, POSITION, AMMO, LEGAL_ACTIONS] = \
 
 MOVEMENT_SELECTIONS = 'movementSelections'
 ENGAGEMENT_SELECTIONS = 'engagementSelections'
+ACTION_SELECTIONS = 'actionSelections'
 RESOLUTION_SEQUENCE = 'resolutionSequence'
 ACTION_TYPE = 'actionType'
 TARGET_ID = 'targetID'
@@ -142,7 +143,8 @@ class GameServer(multiprocessing.Process):
         data_kind: str, 
         game_state: Dict, 
         engagement_outcomes: List,
-        is_2player: bool=False) -> Dict:
+        is_2player: bool=False,
+        actions=None) -> Dict:
         ''' Format game state into API-Compatible dictionary to be sent as response message
 
         Args:
@@ -164,9 +166,9 @@ class GameServer(multiprocessing.Process):
         rep_msg[DATA] = dict()
         rep_msg[DATA][KIND] = data_kind
         rep_msg[DATA][GAME_STATE] = game_state
+        rep_msg[DATA][ACTION_SELECTIONS] = actions
         if data_kind == ENGAGE_PHASE_RESP:
             rep_msg[DATA][RESOLUTION_SEQUENCE] = engagement_outcomes
-
         if is_2player:
             assert api_version.split('.')[-1] == '2p', "Expected 2-player API, got {}".format(api_version)
             reg = []
@@ -476,7 +478,7 @@ class TwoPlayerGameServer(GameServer):
 
         # if both player requests are present
         if self.player_input_queue_filled():
-
+        
             # check for matching context for both player inputs
             # NOTE: check_game_context only checks one request, not matching request from both players
             cntx = self.player_input_queue[player_id][CONTEXT]
@@ -492,6 +494,7 @@ class TwoPlayerGameServer(GameServer):
                 # reset game state
                 self.game.reset_game()
                 data_kind = GAME_RESET_RESP
+                player_actions = None
 
             elif cntx in [MOVE_PHASE, ENGAGE_PHASE, DRIFT_PHASE]:
 
@@ -527,7 +530,8 @@ class TwoPlayerGameServer(GameServer):
                 data_kind=data_kind,
                 game_state=game_state, 
                 engagement_outcomes=engagement_outcomes,
-                is_2player=True)
+                is_2player=True,
+                actions=player_actions)
             self.publisher_socket.send_json(resp_msg)
 
             # reset player inputs
@@ -985,7 +989,7 @@ def print_game_info(game_state):
     print("STATES:")
     for tok in game_state[TOKEN_STATES]:
         print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(tok[PIECE_ID], tok[POSITION], tok[FUEL]))
-    print("alpha|beta score: {}|{}".format(game_state[SCORE_ALPHA],game_state[SCORE_BETA]))
+    print(U.P1+" | "+U.P2+" score: {}|{}".format(game_state[SCORE_ALPHA],game_state[SCORE_BETA]))
 
 def print_engagement_outcomes_list(engagement_outcomes):
     '''
