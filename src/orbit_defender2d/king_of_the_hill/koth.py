@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple
 from orbit_defender2d.utils.orbit_grid import OrbitGrid
 from orbit_defender2d.utils.satellite import Satellite
 from orbit_defender2d.utils.engagement_graph import EngagementGraph
+from time import sleep
 
 # Encode game parameters as named tuple so that
 # 1. all parameters are grouped easily together
@@ -319,7 +320,7 @@ class KOTHGame:
         # Populate team bludger pieces based on init_pattern relative to target sectors (hills)
         for init_val in init_pattern_alpha:
             rel_azim, n_sats = init_val
-            for sat_i in range(n_sats):
+            for _ in range(n_sats):
                 p1_state.append(None)
                 p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
                     KOTHTokenState(
@@ -330,7 +331,7 @@ class KOTHGame:
 
         for init_val in init_pattern_beta:
             rel_azim, n_sats = init_val
-            for sat_i in range(n_sats):
+            for _ in range(n_sats):
                 p2_state.append(None)
                 p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
                     KOTHTokenState(
@@ -363,7 +364,7 @@ class KOTHGame:
         ########## THIS IS FOR USE ONLY WITH AI AGENTS THAT REQUIRE EXACTLY 1 SEEKER AND 10 BLUDGERS
         if n_tokens_alpha and n_tokens_beta < 11:
             #Add more 'removed' satellites to each player until they each have 11 total satellites
-            for sat_i in range(11 - n_tokens_alpha):
+            for _ in range(11 - n_tokens_alpha):
                 p1_state.append(None)
                 p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
                     KOTHTokenState(
@@ -371,7 +372,7 @@ class KOTHGame:
                         role=U.BLUDGER, 
                         position=0)
                 n_tokens_alpha += 1
-            for sat_i in range(11 - n_tokens_beta):
+            for _ in range(11 - n_tokens_beta):
                 p2_state.append(None)
                 p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
                     KOTHTokenState(
@@ -410,7 +411,7 @@ class KOTHGame:
         ''' returns kothgame formatted game_state based on gameserver information. 
             Used to keep the KothGame functions up to date with the game server.
             Requires importing the GS, which in turn imports KothGame, therefore
-            could cause circular import issues if not careful.
+            could cause circular import issues if not careful. Should probably move this function.
         Args:
             cur_game_state (Dict): state of game passed from the game server
             
@@ -429,47 +430,25 @@ class KOTHGame:
 
         n_tokens_alpha = 0
         n_tokens_beta = 0
-  
-        p1_state = [None] 
-        p1_state[0] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = KOTHTokenState(
-                Satellite(fuel=cur_game_state[GS.TOKEN_STATES][0]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][0]['ammo']), 
-                role=cur_game_state[GS.TOKEN_STATES][0]['role'], 
-                position=cur_game_state[GS.TOKEN_STATES][0]['position'])
-        n_tokens_alpha = 1
+        p1_state = [] 
+        p2_state = []
 
-        p2_state = [None]
-        p2_state[0] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.SEEKER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = KOTHTokenState(
-                Satellite(fuel=cur_game_state[GS.TOKEN_STATES][1]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][1]['ammo']), 
-                role=cur_game_state[GS.TOKEN_STATES][1]['role'], 
-                position=cur_game_state[GS.TOKEN_STATES][1]['position'])
-        n_tokens_beta = 1
-
-        # Populate team bludger pieces based on init_pattern relative to target sectors (hills)
-        n_sats = len(cur_game_state[GS.TOKEN_STATES])/2 - 1
-        if n_sats % 1 != 0:
-            raise ValueError("Uneven number of satellites")
-        else:
-            n_sats = int(n_sats)
-
-        for sat_i in range(n_sats):
-            p1_state.append(None)
-            p1_state[-1] = token_catalog[U.P1 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_alpha)] = \
-                KOTHTokenState(
-                    Satellite(fuel=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['ammo']), 
-                    role=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['role'], 
-                    position=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+1]['position'])
-            n_tokens_alpha += 1
-
-        
-        for sat_i in range(n_sats):
-            p2_state.append(None)
-            p2_state[-1] = token_catalog[U.P2 + U.TOKEN_DELIMITER + U.BLUDGER + U.TOKEN_DELIMITER + str(n_tokens_beta)] = \
-                KOTHTokenState(
-                    Satellite(fuel=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['fuel'], ammo=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['ammo']), 
-                    role=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['role'], 
-                    position=cur_game_state[GS.TOKEN_STATES][n_tokens_alpha+n_tokens_beta]['position'])
-            n_tokens_beta += 1
-
+        for token_state in cur_game_state[GS.TOKEN_STATES]:
+            if U.P1 in token_state[GS.PIECE_ID]:
+                p1_state.append(None)
+                p1_state[-1] = token_catalog[token_state[GS.PIECE_ID]] = KOTHTokenState(
+                    Satellite(fuel=token_state[GS.FUEL], ammo=token_state[GS.AMMO]),
+                    role=token_state[GS.ROLE],
+                    position=token_state[GS.POSITION])
+                n_tokens_alpha += 1
+            else:
+                p2_state.append(None)
+                p2_state[-1] = token_catalog[token_state[GS.PIECE_ID]] = KOTHTokenState(
+                    Satellite(fuel=token_state[GS.FUEL], ammo=token_state[GS.AMMO]),
+                    role=token_state[GS.ROLE],
+                    position=token_state[GS.POSITION])
+                n_tokens_beta += 1
+    
         game_state[U.P1][U.TOKEN_STATES] = p1_state #p1state
         game_state[U.P1][U.SCORE] = cur_game_state[GS.SCORE_ALPHA] #p1score
         game_state[U.P2][U.TOKEN_STATES] = p2_state #p2state
@@ -491,6 +470,29 @@ class KOTHGame:
             max_ring=self.inargs.max_ring)
 
         return game_state, token_catalog, n_tokens_alpha, n_tokens_beta
+
+    def arbitrary_engagement_outcomes_from_server(self,engagement_outcomes):
+        import orbit_defender2d.king_of_the_hill.game_server as GS
+        ''' returns kothgame formatted engagement outcomes based on gameserver information. 
+            Used to keep the KothGame functions up to date with the game server.
+            Requires importing the GS, which in turn imports KothGame, therefore
+            could cause circular import issues if not careful. Should probably move this function.
+        Args:
+            engagement_outcomes: list of dicts with engagement outcomes from game server
+            
+        Returns:
+            tuple_engagement_outcomes: List of engagement outcome tuples
+        '''
+        tuple_engagement_outcomes = []
+        for engagement in engagement_outcomes:
+            tuple_engagement_outcomes.append(U.EngagementOutcomeTuple(
+                    action_type=engagement[GS.ACTION_TYPE],
+                    attacker=engagement[GS.ATTACKER_ID],
+                    target=engagement[GS.TARGET_ID],  
+                    guardian=engagement[GS.GUARDIAN_ID], 
+                    prob=engagement[GS.PROB], 
+                    success=engagement[GS.SUCCESS]))
+        return tuple_engagement_outcomes
 
     def update_turn_phase(self, turn_phase: str):
         ''' update game_state with new turn phase; updates adjacency and legal acitons
@@ -1057,26 +1059,31 @@ class KOTHGame:
                         print("Turnphase: {}".format(self.game_state[U.TURN_PHASE]))
                         print("Token: {}".format(token_name))
                         print("Fuel Available: {}".format(token_state.satellite.fuel))
-                        print("Select an action from the list")
-                        print("0 - NOOP (0 Fuel)")
-                        if any(t.action_type==U.PROGRADE for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
-                            print("1 - Prograde ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.PROGRADE]))
-                        if any(t.action_type==U.RETROGRADE for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
-                            print("2 - Retrograde ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.RETROGRADE]))
-                        if any(t.action_type==U.RADIAL_IN for t in self.game_state[U.LEGAL_ACTIONS][token_name]): 
-                            print("3 - Radial In ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.RADIAL_IN]))
-                        if any(t.action_type==U.RADIAL_OUT for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
-                            print("4 - Radial Out ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.RADIAL_OUT]))
-                        select_valid = 0
-                        while not select_valid:
-                            selection = input("Select action: ")
-                            if selection.isdigit() and int(selection) < len(movements):
-                                    if U.MovementTuple(movements[int(selection)]) in self.game_state[U.LEGAL_ACTIONS][token_name]:
-                                        select_valid = 1
-                                    else:
-                                        print("Invalid selection. Please select a legal action")
-                            else:
-                                print("Invalid selection. Please select a number between 0 and {}".format(len(movements)-1))
+                        if len(self.game_state[U.LEGAL_ACTIONS][token_name]) == 1:
+                            print("Only NOOP available")
+                            selection = 0
+                            sleep(0.5)
+                        else:
+                            print("Select an action from the list")
+                            print("0 - NOOP (0 Fuel)")
+                            if any(t.action_type==U.PROGRADE for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
+                                print("1 - Prograde ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.PROGRADE]))
+                            if any(t.action_type==U.RETROGRADE for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
+                                print("2 - Retrograde ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.RETROGRADE]))
+                            if any(t.action_type==U.RADIAL_IN for t in self.game_state[U.LEGAL_ACTIONS][token_name]): 
+                                print("3 - Radial In ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.RADIAL_IN]))
+                            if any(t.action_type==U.RADIAL_OUT for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
+                                print("4 - Radial Out ({} Fuel)".format(self.inargs.fuel_usage[plr_id][U.RADIAL_OUT]))
+                            select_valid = 0
+                            while not select_valid:
+                                selection = input("Select action: ")
+                                if selection.isdigit() and int(selection) < len(movements):
+                                        if U.MovementTuple(movements[int(selection)]) in self.game_state[U.LEGAL_ACTIONS][token_name]:
+                                            select_valid = 1
+                                        else:
+                                            print("Invalid selection. Please select a legal action")
+                                else:
+                                    print("Invalid selection. Please select a number between 0 and {}".format(len(movements)-1))
                         #add the action to the dictionary of actions to send to the game server
                         actions_dict[token_name] = U.MovementTuple(movements[int(selection)])
                     else:
@@ -1094,35 +1101,45 @@ class KOTHGame:
                             #clear the screen
                             print("Turnphase: {}".format(self.game_state[U.TURN_PHASE]))
                             print("Token ID: {}".format(token_name))
-                            print("Select an action from the list")
-                            print("0 - NOOP: 0 Fuel")
-                            if any(t.action_type==U.SHOOT for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
-                                print("1 - Shoot: {}/{} Fuel in-sector/adjacent, {}/{} P(success) in-sector/adjacent".format(self.inargs.fuel_usage[plr_id][U.IN_SEC][U.SHOOT],self.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.SHOOT],self.inargs.engage_probs[plr_id][U.IN_SEC][U.SHOOT],self.inargs.engage_probs[plr_id][U.ADJ_SEC][U.SHOOT]))
-                            if any(t.action_type==U.COLLIDE for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
-                                print("2 - Collide: {}/{} Fuel in-sector/adjacent, {}/{} P(success) in-sector/adjacent".format(self.inargs.fuel_usage[plr_id][U.IN_SEC][U.COLLIDE],self.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.COLLIDE],self.inargs.engage_probs[plr_id][U.IN_SEC][U.COLLIDE],self.inargs.engage_probs[plr_id][U.ADJ_SEC][U.COLLIDE]))
-                            if any(t.action_type==U.GUARD for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
-                                print("3 - Guard: {}/{} Fuel in-sector/adjacent, {}/{} P(success) in-sector/adjacent".format(self.inargs.fuel_usage[plr_id][U.IN_SEC][U.GUARD],self.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.GUARD],self.inargs.engage_probs[plr_id][U.IN_SEC][U.GUARD],self.inargs.engage_probs[plr_id][U.ADJ_SEC][U.GUARD]))
-                            select_valid = 0
-                            while not select_valid:
-                                selection = input("Select action: ")
-                                if selection.isdigit() and int(selection) < len(engagements):
-                                        select_valid = 1
-                                else:
-                                        print("Invalid selection. Please select a number between 0 and {}".format(len(engagements)-1))
-                            #if the action is not a noop then prompt the player to select a target
-                            if int(selection) != 0:
-                                tgt_valid = 0
-                                while not tgt_valid:
-                                    tgt = input("Select target: ")
-                                    if tgt.isdigit():
-                                        if int(tgt) < 11:
-                                            tgt_valid = 1
-                                        else:
-                                            print("Invalid selection. Please select a number between 0 and {}".format(10))
-                                    else:
-                                            print("Invalid selection. Please select a number between 0 and {}".format(10))
+                            print("Fuel Available: {}".format(token_state.satellite.fuel))
+                            if len(self.game_state[U.LEGAL_ACTIONS][token_name]) == 1:
+                                print("Only NOOP available")
+                                selection = 0
+                                sleep(0.5)
                             else:
-                                tgt = 0    
+                                print("Select an action from the list")
+                                print("0 - NOOP: 0 Fuel")
+                                if any(t.action_type==U.SHOOT for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
+                                    print("1 - Shoot: {}/{} Fuel in-sector/adjacent, {}/{} P(success) in-sector/adjacent".format(self.inargs.fuel_usage[plr_id][U.IN_SEC][U.SHOOT],self.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.SHOOT],self.inargs.engage_probs[plr_id][U.IN_SEC][U.SHOOT],self.inargs.engage_probs[plr_id][U.ADJ_SEC][U.SHOOT]))
+                                if any(t.action_type==U.COLLIDE for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
+                                    print("2 - Collide: {}/{} Fuel in-sector/adjacent, {}/{} P(success) in-sector/adjacent".format(self.inargs.fuel_usage[plr_id][U.IN_SEC][U.COLLIDE],self.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.COLLIDE],self.inargs.engage_probs[plr_id][U.IN_SEC][U.COLLIDE],self.inargs.engage_probs[plr_id][U.ADJ_SEC][U.COLLIDE]))
+                                if any(t.action_type==U.GUARD for t in self.game_state[U.LEGAL_ACTIONS][token_name]):
+                                    print("3 - Guard {}: {}/{} Fuel in-sector/adjacent, {}/{} P(success) in-sector/adjacent".format(U.SEEKER, self.inargs.fuel_usage[plr_id][U.IN_SEC][U.GUARD],self.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.GUARD],self.inargs.engage_probs[plr_id][U.IN_SEC][U.GUARD],self.inargs.engage_probs[plr_id][U.ADJ_SEC][U.GUARD]))
+                                select_valid = 0
+                                while not select_valid:
+                                    selection = input("Select action: ")
+                                    if selection.isdigit() and int(selection) < len(engagements):
+                                            select_valid = 1
+                                    else:
+                                            print("Invalid selection. Please select a number between 0 and {}".format(len(engagements)-1))
+                                #if the action is not a noop then prompt the player to select a target
+                                if int(selection) != 0:
+                                    tgt_valid = 0
+                                    if int(selection) == 3:
+                                        #3 is gaurd. The target will be the SEEKER, don't ask for a target selection
+                                        tgt = str(0)
+                                        tgt_valid = 1
+                                    while not tgt_valid:
+                                        tgt = input("Select target: ")
+                                        if tgt.isdigit():
+                                            if int(tgt) < 11:
+                                                tgt_valid = 1
+                                            else:
+                                                print("Invalid selection. Please select a number between 0 and {}".format(10))
+                                        else:
+                                                print("Invalid selection. Please select a number between 0 and {}".format(10))
+                                else:
+                                    tgt = str(0)    
                             #add the action to the dictionary of actions to send to the game server
                             #For engagement phase, the legal actions are a list with entries of actionType and then targetID
                             if int(selection) >0 and int(selection) < 3:
@@ -1376,12 +1393,13 @@ def get_legal_verbose_actions(
                     else:
                         #Actions against the other player's tokens are only legal if the target token has fuel remaining (is not inactive)
                         if token_catalog[target_token_name].satellite.fuel > 0:
-                            # collide is legal if target has fuel, even if the actor does not have enough fuel. If actor fuel is insufficient, then this will be filterd out by apply_fuel_constraints
-                            legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
-                            # shoot only legal if ammo available and token is not SEEKER, SEEKER tokens can't shoot
+                            if token_state.satellite.ammo >= 1:
+                                legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
+                            # SEEKER token's can't collide. They can shoot if they are given ammo (which is usually not the case)
                             if U.SEEKER not in token_name:
-                                if token_state.satellite.ammo >= 1:
-                                    legal_actions[token_name].append(U.EngagementTuple(U.SHOOT, target_token_name, None))
+                                # collide is legal if target has fuel, even if the actor does not have enough fuel. If actor fuel is insufficient, then this will be filterd out by apply_fuel_constraints
+                                legal_actions[token_name].append(U.EngagementTuple(U.COLLIDE, target_token_name, None))
+
 
         elif turn_phase == U.DRIFT:
             # no legal actions during drift
@@ -1416,11 +1434,12 @@ def print_actions(actions, file=None):
             print("   {:<15s} | {}".format(toknm, act), file=file)
 
 def print_engagement_outcomes(engagement_outcomes, file=None):
-    print("ENGAGEMENT OUTCOMES:", file=file)
-    # if engagement_outcomes is empty print No engagements
+    print("ENGAGEMENT OUTCOMES:", file=file)    
     if not engagement_outcomes:
+        pass
         print("    No engagements", file=file)
     else:
+        # if engagement_outcomes is empty print No engagements
         # print the engagement outcomes for guarding actions first
         print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format("Action", "Attacker", "Guardian", "Target", "Result"), file=file)
         for egout in engagement_outcomes:
@@ -1440,7 +1459,7 @@ def print_engagement_outcomes(engagement_outcomes, file=None):
             else:
                 print("Unrecognized action type {}".format(egout.action_type), file=file)
                 raise ValueError("Unrecognized action type {}".format(egout.action_type))
-def start_log_file(logfile):
+def start_log_file(logfile, p1_alias=None, p2_alias=None):
     ''' create a new game log file
 
     Args:
@@ -1449,11 +1468,18 @@ def start_log_file(logfile):
     #Make new filename with date and time appended  to logfile
     logfile = logfile + "_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".txt"
     #Check that the file exists and create it if it doesn't exist
+    if p1_alias is None:
+        p1_alias = U.P1
+    if p2_alias is None:
+        p2_alias = U.P2
+        
     if not os.path.isfile(logfile):
         with open(logfile, 'w') as f:
             #Write header with date and time
             f.write("Game Log File\n")
             f.write("Date: {}\n".format(datetime.datetime.now()))
+            f.write("Player 1: {}\n".format(p1_alias))
+            f.write("Player 2: {}\n".format(p2_alias))
             f.close()
 
     return logfile
@@ -1485,7 +1511,8 @@ def print_endgame_status(game, file=None):
         print("max turns reached", file=file)
 
     print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score), file=file)
-
+    #print the time at the end of the game
+    print("Date: {}".format(datetime.datetime.now()), file=file)
 
 def log_game_to_file(game, logfile, actions=None):
     ''' add game state to game log file
@@ -1540,6 +1567,7 @@ def log_game_to_file(game, logfile, actions=None):
                 raise ValueError("Unrecognized game phase {}".format(phase))
             f.close()
             return
+
 def normal_choice_from_list(length_of_list, stddev=1.5, mean=None):
     '''Choose a random element from a list of choices
     Ensure that choies are normally disctirbuted with the 

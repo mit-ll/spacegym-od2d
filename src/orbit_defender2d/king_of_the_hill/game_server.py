@@ -326,7 +326,6 @@ class TwoPlayerGameServer(GameServer):
 
             # start game if both players registered (condition decided by register func)
             if start_game:
-                
                 # reset game, access and format game state data
                 self.game.reset_game()
                 game_state = self.get_game_state()

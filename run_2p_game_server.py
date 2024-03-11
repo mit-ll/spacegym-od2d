@@ -8,7 +8,7 @@ import numpy as np
 import orbit_defender2d.utils.utils as U
 import copy
 import orbit_defender2d.king_of_the_hill.pettingzoo_env as PZE
-import orbit_defender2d.king_of_the_hill.default_game_parameters_tests as DGP
+import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 #import orbit_defender2d.king_of_the_hill.default_game_parameters_small as DGP
 from orbit_defender2d.king_of_the_hill import koth
 from orbit_defender2d.king_of_the_hill import game_server as GS
@@ -65,6 +65,7 @@ class ListenerClient(object):
         self.alias = plr_alias
         self.player_id = None
         self.game_state = None
+        self.player_registry = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
 
@@ -237,6 +238,9 @@ class ListenerClient(object):
                 with self._lock:
                     #self.assert_consistent_registry(msg[GS.DATA][GS.PLAYER_REGISTRY])
                     self.game_state = msg[GS.DATA][GS.GAME_STATE]
+                    self.player_registry = msg[GS.DATA][GS.PLAYER_REGISTRY]
+                    if msg[GS.DATA][GS.KIND] == GS.ENGAGE_PHASE_RESP:
+                        self.engagement_outcomes = msg[GS.DATA][GS.RESOLUTION_SEQUENCE]
                     assert_valid_game_state(game_state=self.game_state)
 
                 print('{} client received and processed message on SUB!'.format(self.alias))
@@ -292,39 +296,61 @@ def run_listener(game_server, listener_client, render=True):
         sleep(5)
         tmp_game_state = listener_client.game_state
         print("Waiting for a game to begin")
-        
+    
+    #Get the player registry
+    no_player_reg = True
+    while no_player_reg:
+        plr_reg = listener_client.player_registry
+        if plr_reg is not None:
+            no_player_reg = False
+        else:
+            print("Waiting for player registry...")
+            sleep(1)
+    
     game_started = True
     print("Game started")
+    #start logfile
+    p1_alias = plr_reg[0][GS.PLAYER_ID]+":"+plr_reg[0][GS.PLAYER_ALIAS]
+    p2_alias = plr_reg[1][GS.PLAYER_ID]+":"+plr_reg[1][GS.PLAYER_ALIAS]
+    print("Player 1: ", p1_alias)
+    print("Player 2: ", p2_alias)
+    logfile = koth.start_log_file('./logs/game_log', p1_alias=p1_alias, p2_alias=p2_alias)
 
     if render:
         #Create local penv game to render
-        penv = PZE.parallel_env(game_params=GAME_PARAMS)
+        penv = PZE.parallel_env(game_params=GAME_PARAMS, training_randomize=False)
         penv.reset()
         penv.render(mode='human')
 
-    turn_phase = tmp_game_state['turnPhase']
+    turn_phase = tmp_game_state[GS.TURN_PHASE]
 
-    while tmp_game_state['gameDone'] is False:
+    while tmp_game_state[GS.GAME_DONE] is False:
         tmp_game_state = listener_client.game_state
         local_game = penv.kothgame
         local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
         penv.kothgame = local_game
 
-        if tmp_game_state['turnPhase'] != turn_phase:
+        if tmp_game_state[GS.TURN_PHASE] != turn_phase:
             koth.print_game_info(local_game)
-            turn_phase = tmp_game_state['turnPhase']
+            koth.log_game_to_file(local_game, logfile)
+            if tmp_game_state[GS.TURN_PHASE] == U.DRIFT:
+                if hasattr(listener_client, 'engagement_outcomes'):
+                    with open(logfile, 'a') as f:
+                        print_engagement_outcomes_list(listener_client.engagement_outcomes, file=f)
+                        f.close()
+            turn_phase = tmp_game_state[GS.TURN_PHASE]
         
         if render:
             penv.render(mode='human')
 
-
-        
+        if tmp_game_state[GS.GAME_DONE] is True:
+            koth.print_endgame_status(local_game)
+            koth.log_game_to_file(local_game, logfile)
+            break
         print("Waiting for game to finish")
         sleep(1)
 
     # Game is finished, print final info and get winner
-    koth.print_endgame_status(local_game)
-
     winner = None
     alpha_score =local_game.game_state[U.P1][U.SCORE]
     beta_score = local_game.game_state[U.P2][U.SCORE]
