@@ -170,13 +170,13 @@ class KOTHGame:
         if np.random.rand() < 0.25:
             return
         
-        symmetry_flag = np.random.choice([0,1], p=[0.8, 0.2])
+        symmetry_flag = np.random.choice([0,1], p=[0.2, 0.8])
         if symmetry_flag:
             #Get the range for number of tokens, fuel, and ammo
             #n_tokens_choices = np.arange(4, self.n_tokens_alpha,1)
             #fuel_choices = np.arange(40, self.inargs.init_fuel[U.P1][U.BLUDGER] + 1, 20)
             #ammo_choices = np.arange(0, self.inargs.init_ammo[U.P2][U.BLUDGER] + 1, 1)
-            n_tokens_choices = np.arange(4, 11,1)
+            n_tokens_choices = np.arange(3, 11,1)
             fuel_choices = np.arange(40, 100 + 1, 20)
             ammo_choices = np.arange(0, 4 + 1, 1)
 
