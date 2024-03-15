@@ -167,8 +167,8 @@ class KOTHGame:
         Randomize initial game parameters for training purposes
         '''
         #Only randomize 50% of the time
-        if np.random.rand() < 0.25:
-            return
+        #if np.random.rand() < 0.05:
+        #    return
         
         symmetry_flag = np.random.choice([0,1], p=[0.2, 0.8])
         if symmetry_flag:
@@ -1612,7 +1612,7 @@ def init_board_pattern(n_tokens):
     The output is a list of touples. It is sorted by increasing azimuth relative to the goal sector.
     '''
     if n_tokens == 0:
-        return (0,0)
+        return [(0,0)]
     
     board_pattern = [] 
     position = 0
