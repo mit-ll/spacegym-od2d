@@ -243,8 +243,8 @@ class parallel_env(ParallelEnv):
         self._small_font_size = self._small_font_size_orig
 
         # display dimensions
-        self._x_dim = 1280  # 880
-        self._y_dim = 720  # 560
+        self._x_dim = 1280 #1280  # 880
+        self._y_dim = 720 #720  # 560
         self._aspect_ratio = self._x_dim / self._y_dim
         self._x_dim_orig = self._x_dim
         self._y_dim_orig = self._y_dim
@@ -259,7 +259,8 @@ class parallel_env(ParallelEnv):
                         'gray': (200, 200, 200), 'dark_gray': (100, 100, 100), 'aqua': (0, 180, 180),
                         'red': (200, 0, 120), 'dull_aqua': (120, 150, 150), 'dull_red': (150, 120, 140),
                         'dark_aqua': (0, 80, 80), 'dark_red': (80, 0, 50), 'light_green': (180, 255, 180),
-                        'light_yellow': (255, 255, 200), 'light_aqua': (180, 255, 255), 'light_red': (255, 150, 180)}
+                        'light_yellow': (255, 255, 200), 'light_aqua': (180, 255, 255), 'light_red': (255, 150, 180),
+                        'light_gray': (220, 220, 220)}
         self._bg_color = self._colors['black']
         self._board_color = self._colors['white']
         self._title_color = self._colors['white']
@@ -350,7 +351,8 @@ class parallel_env(ParallelEnv):
             pg.display.update()
 
         if mode == "human":
-            self._watch_for_window_resize()
+            pass
+            #self._watch_for_window_resize()
         elif mode == "debug":
             self._handle_events()
 
@@ -372,7 +374,7 @@ class parallel_env(ParallelEnv):
         g_arc_rect_inner = None
         g_arc_rect_outer = None
 
-        g_line_width = 3
+        g_line_width = 4
 
         # draw board ring by ring from the center outwards
         for ring in range(1, self._ring_count + 1):
@@ -394,6 +396,14 @@ class parallel_env(ParallelEnv):
                                 int(self._board_c[1]), ring_r_min, self._board_color)
             pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
                                 int(self._board_c[1]), ring_r_max, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_min-1, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_max-1, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_min+1, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_max+1, self._board_color)
 
             # draw appropriate number of sectors for current ring
             for sector_idx in range(ring_sectors):
@@ -424,13 +434,23 @@ class parallel_env(ParallelEnv):
 
                 # draw lines on either side of each sector
                 # uses cartesian coordinates (must convert)
-                pg.draw.aaline(self._screen, self._board_color,
-                               pol2cart(ring_r_min, np.degrees(st_angle), self._board_c),
-                               pol2cart(ring_r_max, np.degrees(st_angle), self._board_c))
-                pg.draw.aaline(self._screen, self._board_color,
-                               pol2cart(ring_r_min, np.degrees(end_angle), self._board_c),
-                               pol2cart(ring_r_max, np.degrees(end_angle), self._board_c))
-
+                pg.draw.aalines(self._screen, self._board_color,False,
+                               [(pol2cart(ring_r_min, np.degrees(st_angle), self._board_c)),
+                               (pol2cart(ring_r_max, np.degrees(st_angle), self._board_c)),
+                               (pol2cart(ring_r_min, np.degrees(st_angle), (self._board_c[0],self._board_c[1]+1))),
+                               (pol2cart(ring_r_max, np.degrees(st_angle), (self._board_c[0],self._board_c[1]-1))),
+                               (pol2cart(ring_r_min, np.degrees(st_angle), (self._board_c[0]+1,self._board_c[1]))),
+                               (pol2cart(ring_r_max, np.degrees(st_angle), (self._board_c[0]-1,self._board_c[1]))),                              
+                               ])
+                pg.draw.aalines(self._screen, self._board_color,False,
+                               [(pol2cart(ring_r_min, np.degrees(end_angle), self._board_c)),
+                               (pol2cart(ring_r_max, np.degrees(end_angle), self._board_c)),
+                               (pol2cart(ring_r_min, np.degrees(end_angle), (self._board_c[0],self._board_c[1]+1))),
+                               (pol2cart(ring_r_max, np.degrees(end_angle), (self._board_c[0],self._board_c[1]-1))),
+                               (pol2cart(ring_r_min, np.degrees(end_angle), (self._board_c[0]+1,self._board_c[1]))),
+                               (pol2cart(ring_r_max, np.degrees(end_angle), (self._board_c[0]-1,self._board_c[1]))),                              
+                               ])
+                
                 # number each sector
                 text = self._font.render(str(sector_count), True, self._board_color)
                 self._screen.blit(text,
@@ -1101,7 +1121,7 @@ class parallel_env(ParallelEnv):
         Check for window resize, and if detected, update the window size and redraw the board
         '''
         timer = 0
-        while timer < 5000:
+        while timer < 1000:
             for event in pg.event.get():
                 if event.type == pg.VIDEORESIZE:
                     h_ratio = event.h / self._y_dim_orig
@@ -1293,54 +1313,90 @@ class parallel_env(ParallelEnv):
                                     (y + (self._button_size / 2) - (0.5 * self._large_font.size(' ')[1]))))
 
         # update only the area of the button
-        pg.display.update(rect)
+        #pg.display.update(rect)
 
     def _draw_earth(self):
         '''
         Displays image of the Earth in the center of the game board that rotates by 180 degrees at each drift phase.
         '''
         # Earth only rotates on drift phase
-        if self.kothgame.game_state[U.TURN_PHASE] == "drift" and self.kothgame.game_state[U.TURN_COUNT] > 0:
-            cycles = 9
-            rot_increment = 10
-        else:
-            cycles = 1
-            rot_increment = 0
-
         ring_r_min = self._board_r / (self._ring_count + 1)
-        for rot_frame in range(cycles):
-            # Increment rotation
-            self._earth_rotation += rot_increment
+        if self.kothgame.game_state[U.TURN_PHASE] == "drift" and self.kothgame.game_state[U.TURN_COUNT] > 0:
+            #Display image with rotation equal to 90 degrees for each turn. Calculate rotatino angle with modulo 360
+            self._earth_rotation = self.kothgame.game_state[U.TURN_COUNT] * 90 % 360
+            
+        # load the image
+        earth_img = pg.image.load(Path(__file__).parent.joinpath("earth.png"))
+        earth_img = pg.transform.scale(earth_img, (2 * ring_r_min, 2 * ring_r_min))
+        
+        # offset from pivot to center
+        w, h = earth_img.get_size()
+        img_rect = earth_img.get_rect(topleft=(self._board_c[0] - (w / 2), self._board_c[1] - (h / 2)))
+        offset_center_to_pivot = pg.math.Vector2(self._board_c) - img_rect.center
 
-            # load the image
-            earth_img = pg.image.load(Path(__file__).parent.joinpath("earth.png"))
-            earth_img = pg.transform.scale(earth_img, (2 * ring_r_min, 2 * ring_r_min))
+        # rotated offset from pivot to center
+        rotated_offset = offset_center_to_pivot.rotate(-self._earth_rotation)
 
-            # offset from pivot to center
-            w, h = earth_img.get_size()
-            img_rect = earth_img.get_rect(topleft=(self._board_c[0] - (w / 2), self._board_c[1] - (h / 2)))
-            offset_center_to_pivot = pg.math.Vector2(self._board_c) - img_rect.center
+        # get rotated image center
+        rotated_image_center = (self._board_c[0] - rotated_offset.x, self._board_c[1] - rotated_offset.y)
 
-            # rotated offset from pivot to center
-            rotated_offset = offset_center_to_pivot.rotate(-self._earth_rotation)
+        # rotate the image and its rectangle
+        rot_img = pg.transform.rotate(earth_img, self._earth_rotation)
+        rot_img_rect = rot_img.get_rect(center=rotated_image_center)
 
-            # get rotated image center
-            rotated_image_center = (self._board_c[0] - rotated_offset.x, self._board_c[1] - rotated_offset.y)
+        # blit the rotated image
+        self._screen.blit(rot_img, rot_img_rect)
 
-            # rotate the image and its rectangle
-            rot_img = pg.transform.rotate(earth_img, self._earth_rotation)
-            rot_img_rect = rot_img.get_rect(center=rotated_image_center)
+        # redraw board lines that get covered by rotated image
+        #pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] - ring_r_min, self._board_c[1]),
+        #                (self._board_c[0] - (2 * ring_r_min), self._board_c[1]))
+        #pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] + ring_r_min, self._board_c[1]),
+        #                (self._board_c[0] + (2 * ring_r_min), self._board_c[1]))
 
-            # blit the rotated image
-            self._screen.blit(rot_img, rot_img_rect)
+        pg.display.update()
+        
+        
+        # if self.kothgame.game_state[U.TURN_PHASE] == "drift" and self.kothgame.game_state[U.TURN_COUNT] > 0:
+        #     cycles = 9
+        #     rot_increment = 10
+        # else:
+        #     cycles = 1
+        #     rot_increment = 0
 
-            # redraw board lines that get covered by rotated image
-            pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] - ring_r_min, self._board_c[1]),
-                           (self._board_c[0] - (2 * ring_r_min), self._board_c[1]))
-            pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] + ring_r_min, self._board_c[1]),
-                           (self._board_c[0] + (2 * ring_r_min), self._board_c[1]))
+        # ring_r_min = self._board_r / (self._ring_count + 1)
+        # for rot_frame in range(cycles):
+        #     # Increment rotation
+        #     self._earth_rotation += rot_increment
 
-            pg.display.update(rot_img_rect)
+        #     # load the image
+        #     earth_img = pg.image.load(Path(__file__).parent.joinpath("earth.png"))
+        #     earth_img = pg.transform.scale(earth_img, (2 * ring_r_min, 2 * ring_r_min))
+
+        #     # offset from pivot to center
+        #     w, h = earth_img.get_size()
+        #     img_rect = earth_img.get_rect(topleft=(self._board_c[0] - (w / 2), self._board_c[1] - (h / 2)))
+        #     offset_center_to_pivot = pg.math.Vector2(self._board_c) - img_rect.center
+
+        #     # rotated offset from pivot to center
+        #     rotated_offset = offset_center_to_pivot.rotate(-self._earth_rotation)
+
+        #     # get rotated image center
+        #     rotated_image_center = (self._board_c[0] - rotated_offset.x, self._board_c[1] - rotated_offset.y)
+
+        #     # rotate the image and its rectangle
+        #     rot_img = pg.transform.rotate(earth_img, self._earth_rotation)
+        #     rot_img_rect = rot_img.get_rect(center=rotated_image_center)
+
+        #     # blit the rotated image
+        #     self._screen.blit(rot_img, rot_img_rect)
+
+        #     # redraw board lines that get covered by rotated image
+        #     pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] - ring_r_min, self._board_c[1]),
+        #                    (self._board_c[0] - (2 * ring_r_min), self._board_c[1]))
+        #     pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] + ring_r_min, self._board_c[1]),
+        #                    (self._board_c[0] + (2 * ring_r_min), self._board_c[1]))
+
+        #     pg.display.update(rot_img_rect)
 
     def draw_win(self, winner):
         '''Displays winner clearly and updates score when game finishes'''
@@ -1416,6 +1472,12 @@ class parallel_env(ParallelEnv):
         self.gameover = False
         self.render_json = None
         return observations
+    
+    def screen_shot(self, file_name):
+        '''
+        Save a screenshot of the current game state to a file.
+        '''
+        pg.image.save(self._screen, file_name)
 
     def step(self, actions):
         '''

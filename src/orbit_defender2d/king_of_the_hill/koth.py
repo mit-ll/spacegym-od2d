@@ -1104,6 +1104,8 @@ class KOTHGame:
                             print("Turnphase: {}".format(self.game_state[U.TURN_PHASE]))
                             print("Token ID: {}".format(token_name))
                             print("Fuel Available: {}".format(token_state.satellite.fuel))
+                            if U.BLUDGER in token_name:
+                                print("Ammo Available: {}".format(token_state.satellite.ammo))
                             if len(self.game_state[U.LEGAL_ACTIONS][token_name]) == 1:
                                 print("No Actions Available")
                                 selection = 0
