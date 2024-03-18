@@ -170,7 +170,7 @@ class KOTHGame:
         #if np.random.rand() < 0.05:
         #    return
         
-        symmetry_flag = np.random.choice([0,1], p=[0.2, 0.8])
+        symmetry_flag = np.random.choice([0,1], p=[1, 0])
         if symmetry_flag:
             #Get the range for number of tokens, fuel, and ammo
             #n_tokens_choices = np.arange(4, self.n_tokens_alpha,1)
@@ -205,31 +205,46 @@ class KOTHGame:
         else:
             #make a (hopefully) evenly matched asymmetric game
             #randomize alpha or beta being defenisve player
-            defensive_n_tokens = np.random.choice([4,5,6])
-            offensive_n_tokens = np.random.choice([8,9,10])
-            defensive_fuel = 60
-            offensive_fuel = 100
-            defensive_ammo = 4
+            defensive_n_tokens = np.random.choice([3,4,5,6,7,8])
+            offensive_n_tokens = np.random.choice([10])
+            defensive_fuel = np.random.choice([40,60,80,100])
+            offensive_fuel = np.random.choice([100])
+            defensive_ammo = np.random.choice([2,3,4])
             offensive_ammo = 0
             seeker_fuel_points_factor_offense = 1.0
             seeker_fuel_points_factor_defense = 1.2
             bludger_fuel_points_factor_offense = offensive_n_tokens/100
             bludger_fuel_points_factor_defense = defensive_n_tokens/100
+            in_goal_points_offense = 10
+            in_goal_points_defense = 12
 
-            if np.random.rand() < 0.5:
-                new_init_board_pattern_p1 = init_board_pattern(defensive_n_tokens)
-                new_init_board_pattern_p2 = init_board_pattern(offensive_n_tokens)
-                new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: defensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: offensive_fuel}}
-                new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: defensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: offensive_ammo}}
-                new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_defense, U.P2: seeker_fuel_points_factor_offense}
-                new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_defense, U.P2: bludger_fuel_points_factor_offense}
-            else:
-                new_init_board_pattern_p1 = init_board_pattern(offensive_n_tokens)
-                new_init_board_pattern_p2 = init_board_pattern(defensive_n_tokens)
-                new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: offensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: defensive_fuel}}
-                new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: offensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: defensive_ammo}}
-                new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_offense, U.P2: seeker_fuel_points_factor_defense}
-                new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_offense, U.P2: bludger_fuel_points_factor_defense}
+            #Offensive player is always P1, defensive is always P2
+            new_init_board_pattern_p1 = init_board_pattern(offensive_n_tokens)
+            new_init_board_pattern_p2 = init_board_pattern(defensive_n_tokens)
+            new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: offensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: defensive_fuel}}
+            new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: offensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: defensive_ammo}}
+            new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_offense, U.P2: seeker_fuel_points_factor_defense}
+            new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_offense, U.P2: bludger_fuel_points_factor_defense}
+            new_in_goal_points = {U.P1: in_goal_points_offense, U.P2: in_goal_points_defense}
+
+            #Randomize which player is defensive
+            # if np.random.rand() < 0.5:
+            #     new_init_board_pattern_p1 = init_board_pattern(defensive_n_tokens)
+            #     new_init_board_pattern_p2 = init_board_pattern(offensive_n_tokens)
+            #     new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: defensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: offensive_fuel}}
+            #     new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: defensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: offensive_ammo}}
+            #     new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_defense, U.P2: seeker_fuel_points_factor_offense}
+            #     new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_defense, U.P2: bludger_fuel_points_factor_offense}
+            #     new_in_goal_points = {U.P1: in_goal_points_offense, U.P2: in_goal_points_defense}
+            # else:
+            #     new_init_board_pattern_p1 = init_board_pattern(offensive_n_tokens)
+            #     new_init_board_pattern_p2 = init_board_pattern(defensive_n_tokens)
+            #     new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: offensive_fuel}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: defensive_fuel}}
+            #     new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: offensive_ammo}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: defensive_ammo}}
+            #     new_fuel_points_factor = {U.P1: seeker_fuel_points_factor_offense, U.P2: seeker_fuel_points_factor_defense}
+            #     new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_offense, U.P2: bludger_fuel_points_factor_defense}
+            #     new_in_goal_points = {U.P1: in_goal_points_defense, U.P2: in_goal_points_offense}
+
            
         #Update the game params and reset the game
         new_params = KOTHGameInputArgs(
@@ -244,12 +259,13 @@ class KOTHGame:
 
             fuel_points_factor_bludger=new_fuel_points_factor_bludger,
             fuel_points_factor=new_fuel_points_factor,
+            in_goal_points=new_in_goal_points,
 
             min_fuel=self.inargs.min_fuel,
             fuel_usage=self.inargs.fuel_usage,
             engage_probs=self.inargs.engage_probs,
             illegal_action_score=self.inargs.illegal_action_score,
-            in_goal_points=self.inargs.in_goal_points,
+            
             adj_goal_points=self.inargs.adj_goal_points,
             win_score=self.inargs.win_score,
             max_turns=self.inargs.max_turns,
