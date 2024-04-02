@@ -351,8 +351,8 @@ class parallel_env(ParallelEnv):
             pg.display.update()
 
         if mode == "human":
-            pass
-            #self._watch_for_window_resize()
+            #pass
+            self._watch_for_window_resize()
         elif mode == "debug":
             self._handle_events()
 
@@ -1439,7 +1439,6 @@ class parallel_env(ParallelEnv):
                                      self._margins[1] + lb_font_size[1]))
 
         pg.display.update()
-
         if self._render_mode == "human":
             pg.time.wait(self._latency)
         elif self._render_mode == "debug":
