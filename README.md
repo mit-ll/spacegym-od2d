@@ -9,6 +9,8 @@
 
 2D environment can be viewed as an orbital plane with objects in circular orbits
 
+See the wiki for more info: https://github.com/mpj15/spacegym-od2d/wiki
+
 ### Design Principles
 
 *TODO*
