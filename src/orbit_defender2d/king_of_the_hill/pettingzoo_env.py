@@ -204,9 +204,9 @@ class parallel_env(ParallelEnv):
         else:
             self.workerid = None
 
-        if training_randomize:
-            #If this flag is set, then train on randomized, but symmetric, initial game states
-            self.kothgame.randomize_game_params()
+        #if training_randomize:
+        #    #If this flag is set, then train on randomized, but symmetric, initial game states
+        self.kothgame.randomize_game_params()
 
         if plr_aliases is not None:
             self.plr1_alias = plr_aliases[0]

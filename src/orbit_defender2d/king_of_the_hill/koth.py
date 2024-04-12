@@ -205,11 +205,11 @@ class KOTHGame:
         else:
             #make a (hopefully) evenly matched asymmetric game
             #randomize alpha or beta being defenisve player
-            defensive_n_tokens = np.random.choice([3,4,5,6,7,8])
-            offensive_n_tokens = np.random.choice([10])
+            defensive_n_tokens = np.random.choice([4,5,6,7,8])
+            offensive_n_tokens = np.random.choice([8,9,10])
             defensive_fuel = np.random.choice([40,60,80,100])
-            offensive_fuel = np.random.choice([100])
-            defensive_ammo = np.random.choice([2,3,4])
+            offensive_fuel = np.random.choice([60,80,100])
+            defensive_ammo = np.random.choice([1,2,3,4])
             offensive_ammo = 0
             seeker_fuel_points_factor_offense = 1.0
             seeker_fuel_points_factor_defense = 1.2
