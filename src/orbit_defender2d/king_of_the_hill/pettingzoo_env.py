@@ -26,8 +26,6 @@ from pettingzoo.utils import parallel_to_aec
 from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for some reason
 
 import orbit_defender2d.utils.utils as U
-#import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
-#import orbit_defender2d.king_of_the_hill.default_game_parameters_old as DGP
 import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
@@ -64,7 +62,8 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
 MAX_AMMO = 10
 MAX_N_TOKENS = 11
 # observation space flat encoding
-# Note: hard-coding and then cross checking in order
+# Note: Some hard-coded values, some taken from DGP. 
+# Hard-coding and then cross checking helps
 # to avoid in-advertant observation space dimension changes
 # due changes in dependent variable
 N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
@@ -204,9 +203,9 @@ class parallel_env(ParallelEnv):
         else:
             self.workerid = None
 
-        #if training_randomize:
-        #    #If this flag is set, then train on randomized, but symmetric, initial game states
-        self.kothgame.randomize_game_params()
+        if training_randomize:
+            #If this flag is set, then train on randomized, but symmetric, initial game states
+            self.kothgame.randomize_game_params()
 
         if plr_aliases is not None:
             self.plr1_alias = plr_aliases[0]
