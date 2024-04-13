@@ -165,6 +165,8 @@ class KOTHGame:
     def randomize_game_params(self):
         '''
         Randomize initial game parameters for training purposes
+        This will randomly change the initial conditions of the game to be different than what was set in the input arguments.
+        Both aysmmetric and symmetric games are possible by adjusting the code here.
         '''
         #Only randomize 50% of the time
         #if np.random.rand() < 0.05:
@@ -198,13 +200,12 @@ class KOTHGame:
             new_fuel = {U.P1: {U.SEEKER: self.inargs.init_fuel[U.P1][U.SEEKER], U.BLUDGER: new_fuel_val}, U.P2: {U.SEEKER: self.inargs.init_fuel[U.P2][U.SEEKER], U.BLUDGER: new_fuel_val}}
             new_ammo = {U.P1: {U.SEEKER: self.inargs.init_ammo[U.P1][U.SEEKER], U.BLUDGER: new_ammo_val}, U.P2: {U.SEEKER: self.inargs.init_ammo[U.P2][U.SEEKER], U.BLUDGER: new_ammo_val}}
         
-            #Fuel points factors don't change
+            #Fuel points factors won't change for symmetric games
             new_fuel_points_factor = self.inargs.fuel_points_factor
             new_fuel_points_factor_bludger = self.inargs.fuel_points_factor_bludger
 
-        else:
-            #make a (hopefully) evenly matched asymmetric game
-            #randomize alpha or beta being defenisve player
+        else: #This is for asymmetric games
+            #make an asymmetric game with an 'offensive' side with more tokens and 'defensive' side with fewer tokens
             defensive_n_tokens = np.random.choice([4,5,6,7,8])
             offensive_n_tokens = np.random.choice([8,9,10])
             defensive_fuel = np.random.choice([40,60,80,100])
@@ -216,7 +217,7 @@ class KOTHGame:
             bludger_fuel_points_factor_offense = offensive_n_tokens/100
             bludger_fuel_points_factor_defense = defensive_n_tokens/100
             in_goal_points_offense = 10
-            in_goal_points_defense = 12
+            in_goal_points_defense = 12 #Defense should get more goal points to emphasize surviving in the goal sector, also this means that if all patrols die, the defense will win by default.
 
             #Offensive player is always P1, defensive is always P2
             new_init_board_pattern_p1 = init_board_pattern(offensive_n_tokens)
@@ -227,7 +228,7 @@ class KOTHGame:
             new_fuel_points_factor_bludger = {U.P1: bludger_fuel_points_factor_offense, U.P2: bludger_fuel_points_factor_defense}
             new_in_goal_points = {U.P1: in_goal_points_offense, U.P2: in_goal_points_defense}
 
-            #Randomize which player is defensive
+            #OR Randomize which player is offense and which is defense
             # if np.random.rand() < 0.5:
             #     new_init_board_pattern_p1 = init_board_pattern(defensive_n_tokens)
             #     new_init_board_pattern_p2 = init_board_pattern(offensive_n_tokens)
@@ -426,8 +427,9 @@ class KOTHGame:
         import orbit_defender2d.king_of_the_hill.game_server as GS
         ''' returns kothgame formatted game_state based on gameserver information. 
             Used to keep the KothGame functions up to date with the game server.
-            Requires importing the GS, which in turn imports KothGame, therefore
-            could cause circular import issues if not careful. Should probably move this function.
+            
+            NOTE: Requires importing the game server GS, which in turn imports KothGame, therefore
+            could cause circular import issues if not careful. TODO: Should probably move this function.
         Args:
             cur_game_state (Dict): state of game passed from the game server
             
@@ -1480,6 +1482,7 @@ def print_engagement_outcomes(engagement_outcomes, file=None):
             else:
                 print("Unrecognized action type {}".format(egout.action_type), file=file)
                 raise ValueError("Unrecognized action type {}".format(egout.action_type))
+
 def start_log_file(logfile, p1_alias=None, p2_alias=None):
     ''' create a new game log file
 
@@ -1613,8 +1616,6 @@ def normal_choice_from_list(length_of_list, stddev=1.5, mean=None):
         normal_choice = length_of_list-1
     
     return normal_choice
-
- 
 
 def init_board_pattern(n_tokens):
     '''
