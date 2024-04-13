@@ -16,7 +16,7 @@ setup(name="orbit_defender2d",
       package_dir={'': 'src'},
       python_requires=">=3",
       install_requires=[
-        "gym==0.21.0", #really should replace gym 0.21.0 or 0.22.0
+        "gym==0.21.0", #requires older version of setuptools and pip listed in requirements.txt
         "pettingzoo==1.15.0",
         "networkx",
         "matplotlib",
