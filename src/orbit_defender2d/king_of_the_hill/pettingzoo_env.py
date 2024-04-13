@@ -26,7 +26,7 @@ from pettingzoo.utils import parallel_to_aec
 from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for some reason
 
 import orbit_defender2d.utils.utils as U
-import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+#import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC
@@ -34,79 +34,214 @@ from orbit_defender2d.king_of_the_hill import koth
 from orbit_defender2d.king_of_the_hill.koth import KOTHTokenState
 from orbit_defender2d.utils.satellite import Satellite
 
-# observation space components
-TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
+def init_with_defaults():
+    '''
+    Initialize game with default parameters by importing DGP
+    '''
+    import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+    
+    # Setup globals
+    global TokenComponentSpaces
+    global GAME_PARAMS
+    global MAX_AMMO
+    global MAX_N_TOKENS
+    global N_BITS_OBS_SCORE
+    global N_BITS_OBS_TURN_COUNT
+    global N_BITS_OBS_TURN_PHASE
+    global N_BITS_OBS_HILL
+    global N_BITS_OBS_SCOREBOARD
+    global N_BITS_OBS_OWN_PIECE
+    global N_BITS_OBS_ROLE
+    global N_BITS_OBS_POSITION
+    global N_BITS_OBS_FUEL
+    global N_BITS_OBS_AMMO
+    global N_BITS_OBS_PER_TOKEN
+    global N_BITS_OBS_TOKENS_PER_PLAYER
+    global N_BITS_OBS_PER_PLAYER
+    global N_BITS_ACT_PER_TOKEN
+    global N_BITS_ACT_PER_PLAYER
+    
+    # observation space components
+    TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
+    
+    # Game Parameters
+    GAME_PARAMS = koth.KOTHGameInputArgs(
+        max_ring=DGP.MAX_RING,
+        min_ring=DGP.MIN_RING,
+        geo_ring=DGP.GEO_RING,
+        init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+        init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
+        init_fuel=DGP.INIT_FUEL,
+        init_ammo=DGP.INIT_AMMO,
+        min_fuel=DGP.MIN_FUEL,
+        fuel_usage=DGP.FUEL_USAGE,
+        engage_probs=DGP.ENGAGE_PROBS,
+        illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
+        in_goal_points=DGP.IN_GOAL_POINTS,
+        adj_goal_points=DGP.ADJ_GOAL_POINTS,
+        fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
+        win_score=DGP.WIN_SCORE,
+        max_turns=DGP.MAX_TURNS,
+        fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+        )
 
-# Game Parameters
-GAME_PARAMS = koth.KOTHGameInputArgs(
-    max_ring=DGP.MAX_RING,
-    min_ring=DGP.MIN_RING,
-    geo_ring=DGP.GEO_RING,
-    init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
-    init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
-    init_fuel=DGP.INIT_FUEL,
-    init_ammo=DGP.INIT_AMMO,
-    min_fuel=DGP.MIN_FUEL,
-    fuel_usage=DGP.FUEL_USAGE,
-    engage_probs=DGP.ENGAGE_PROBS,
-    illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
-    in_goal_points=DGP.IN_GOAL_POINTS,
-    adj_goal_points=DGP.ADJ_GOAL_POINTS,
-    fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
-    win_score=DGP.WIN_SCORE,
-    max_turns=DGP.MAX_TURNS,
-    fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
-    )
+    # make all of these globals:
+    #Set max ammo for later tests
+    MAX_AMMO = 10
+    MAX_N_TOKENS = 11
+    # observation space flat encoding
+    # Note: Some hard-coded values, some taken from DGP. 
+    # Hard-coding and then cross checking helps
+    # to avoid in-advertant observation space dimension changes
+    # due changes in dependent variable
+    N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
+    N_BITS_OBS_TURN_COUNT = len(U.int2bitlist(int(DGP.MAX_TURNS)))  # assumes max turns of 100 -> 7 bits binary
+    N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
+    N_BITS_OBS_HILL = int(DGP.NUM_SPACES+1+1) #number of spaces plus 1 plus a boolen for owner of hill
+    N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
+    N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
+    N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
+    N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
+    N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
+    N_BITS_OBS_AMMO = max(
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
+    #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
+    N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #number of tokens per player * bits per token
+    N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
-#Set max ammo for later tests
-MAX_AMMO = 10
-MAX_N_TOKENS = 11
-# observation space flat encoding
-# Note: Some hard-coded values, some taken from DGP. 
-# Hard-coding and then cross checking helps
-# to avoid in-advertant observation space dimension changes
-# due changes in dependent variable
-N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
-N_BITS_OBS_TURN_COUNT = len(U.int2bitlist(int(DGP.MAX_TURNS)))  # assumes max turns of 100 -> 7 bits binary
-N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
-N_BITS_OBS_HILL = int(DGP.NUM_SPACES+1+1) #number of spaces plus 1 plus a boolen for owner of hill
-N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
-N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
-N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
-N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
-N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
-N_BITS_OBS_AMMO = max(
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
-    len(U.int2bitlist(MAX_AMMO)))
-N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
-#N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
-N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #number of tokens per player * bits per token
-N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
+    # cross-check hard-coded bit sizes with variables upon which they depend
+    assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
+    assert N_BITS_OBS_POSITION == int(DGP.NUM_SPACES)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
+    assert N_BITS_OBS_FUEL == max(
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.BLUDGER]))))
+    assert N_BITS_OBS_AMMO == max(
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
 
-# cross-check hard-coded bit sizes with variables upon which they depend
-assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
-assert N_BITS_OBS_POSITION == int(DGP.NUM_SPACES)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
-assert N_BITS_OBS_FUEL == max(
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.BLUDGER]))),
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.BLUDGER]))))
-assert N_BITS_OBS_AMMO == max(
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
-    len(U.int2bitlist(MAX_AMMO)))
-assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
+    # action space flat encoding
+    # Note: hard-coding and then cross checking in order
+    # to avoid inadvertent observation space dimension changes
+    N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS))  #should be movement types + engagement types*tokens per player
+    N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #should be tokens per player * bits per token action
 
-# action space flat encoding
-# Note: hard-coding and then cross checking in order
-# to avoid inadvertent observation space dimension changes
-N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS))  #should be movement types + engagement types*tokens per player
-N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #should be tokens per player * bits per token action
+def init_with_params(game_params):
+    '''
+    Initialize game with parameters provided in game_params, don't import DGP
+    '''
+     # Setup globals
+    global TokenComponentSpaces
+    global GAME_PARAMS
+    global MAX_AMMO
+    global MAX_N_TOKENS
+    global N_BITS_OBS_SCORE
+    global N_BITS_OBS_TURN_COUNT
+    global N_BITS_OBS_TURN_PHASE
+    global N_BITS_OBS_HILL
+    global N_BITS_OBS_SCOREBOARD
+    global N_BITS_OBS_OWN_PIECE
+    global N_BITS_OBS_ROLE
+    global N_BITS_OBS_POSITION
+    global N_BITS_OBS_FUEL
+    global N_BITS_OBS_AMMO
+    global N_BITS_OBS_PER_TOKEN
+    global N_BITS_OBS_TOKENS_PER_PLAYER
+    global N_BITS_OBS_PER_PLAYER
+    global N_BITS_ACT_PER_TOKEN
+    global N_BITS_ACT_PER_PLAYER
+    
+    # observation space components
+    TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
+    
+    # Game Parameters
+    GAME_PARAMS = koth.KOTHGameInputArgs(
+        max_ring=game_params.max_ring,
+        min_ring=game_params.min_ring,
+        geo_ring=game_params.geo_ring,
+        init_board_pattern_p1=game_params.init_board_pattern_p1,
+        init_board_pattern_p2=game_params.init_board_pattern_p2,
+        init_fuel=game_params.init_fuel,
+        init_ammo=game_params.init_ammo,
+        min_fuel=game_params.min_fuel,
+        fuel_usage=game_params.fuel_usage,
+        engage_probs=game_params.engage_probs,
+        illegal_action_score=game_params.illegal_action_score,
+        in_goal_points=game_params.in_goal_points,
+        adj_goal_points=game_params.adj_goal_points,
+        fuel_points_factor=game_params.fuel_points_factor,
+        win_score=game_params.win_score,
+        max_turns=game_params.max_turns,
+        fuel_points_factor_bludger=game_params.fuel_points_factor_bludger,
+        )
+    
+    if game_params.min_ring == 1:
+        num_spaces = 2**(game_params.max_ring + 1) -2**(game_params.min_ring) #Get the number of spaces in the board (not including the center)
+    elif game_params.min_ring > 1:
+        num_spaces = 2**(game_params.max_ring + 1) -2**(game_params.min_ring - 1) #Get the number of spaces in the board (not including the center)
+    
+    # make all of these globals:
+    #Set max ammo for later tests
+    MAX_AMMO = 10
+    MAX_N_TOKENS = 11
+    # observation space flat encoding
+    # Note: Some hard-coded values, some taken from game_params.
+    # Hard-coding and then cross checking helps
+    # to avoid in-advertant observation space dimension changes
+    # due changes in dependent variable
+    N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
+    N_BITS_OBS_TURN_COUNT = len(U.int2bitlist(int(game_params.max_turns)))  # assumes max turns of 100 -> 7 bits binary
+    N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
+    N_BITS_OBS_HILL = int(num_spaces+1+1) #number of spaces plus 1 plus a boolen for owner of hill
+    N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
+    N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
+    N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
+    N_BITS_OBS_POSITION = int(num_spaces)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
+    N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
+    N_BITS_OBS_AMMO = max(
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
+    #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
+    N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * MAX_N_TOKENS #number of tokens per player * bits per token
+    N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
+
+    # cross-check hard-coded bit sizes with variables upon which they depend
+    assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
+    assert N_BITS_OBS_POSITION == int(num_spaces)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
+    assert N_BITS_OBS_FUEL == max(
+        len(U.int2bitlist(int(game_params.init_fuel[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_fuel[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(game_params.init_fuel[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_fuel[U.P2][U.BLUDGER]))))
+    assert N_BITS_OBS_AMMO == max(
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
+
+    # action space flat encoding
+    # Note: hard-coding and then cross checking in order
+    # to avoid inadvertent observation space dimension changes
+    N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)* MAX_N_TOKENS  #should be movement types + engagement types*tokens per player
+    N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * MAX_N_TOKENS #should be tokens per player * bits per token action
+
+
 
 def env(game_params=None,rllib_env_config=None,training_randomize=None, plr_aliases=None):
     '''
@@ -165,10 +300,13 @@ class parallel_env(ParallelEnv):
         https://github.com/PettingZoo-Team/PettingZoo/blob/master/pettingzoo/classic/chess/chess_env.py
         '''
 
-        # instantiate gameboard
+        # instantiate game object
         if game_params is None:
+            #Initialize game with default parameters
+            init_with_defaults()
             self.kothgame = koth.KOTHGame(**GAME_PARAMS._asdict())
         else:
+            init_with_params(game_params)
             self.kothgame = koth.KOTHGame(**game_params._asdict())
 
         # get agent names from game object
@@ -204,7 +342,7 @@ class parallel_env(ParallelEnv):
             self.workerid = None
 
         if training_randomize:
-            #If this flag is set, then train on randomized, but symmetric, initial game states
+            #If this flag is set, then train on randomized initial game states generated from within the koth.py code
             self.kothgame.randomize_game_params()
 
         if plr_aliases is not None:
