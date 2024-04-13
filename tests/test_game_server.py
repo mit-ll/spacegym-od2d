@@ -26,13 +26,16 @@ DEFAULT_PARAMS_PARTIAL = {
     'adj_goal_points' : DGP.ADJ_GOAL_POINTS,
     'fuel_points_factor': DGP.FUEL_POINTS_FACTOR,
     'win_score' : DGP.WIN_SCORE,
-    'max_turns' : DGP.MAX_TURNS}
+    'max_turns' : DGP.MAX_TURNS,
+    'fuel_points_factor_bludger': DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    }
 
 DEFAULT_PARAMS = {
     'max_ring' : DGP.MAX_RING,
     'min_ring' : DGP.MIN_RING,
     'geo_ring' : DGP.GEO_RING,
-    'init_board_pattern' : DGP.INIT_BOARD_PATTERN,
+    'init_board_pattern_p1' : DGP.INIT_BOARD_PATTERN_P1,
+    'init_board_pattern_p2' : DGP.INIT_BOARD_PATTERN_P2,
     **DEFAULT_PARAMS_PARTIAL
 }
 
@@ -63,10 +66,10 @@ ENG_REQ_MSG_0 = {
     'data': {
         'kind': 'engagementPhaseRequest',
         'engagementSelections': [
-            {'pieceID': 'alpha:seeker:0', 'actionType':'noop', 'targetID':'alpha:seeker:0'},
-            {'pieceID': 'alpha:bludger:1', 'actionType':'shoot', 'targetID':'beta:seeker:0'},
-            {'pieceID': 'beta:seeker:0', 'actionType':'noop', 'targetID':'beta:seeker:0'},
-            {'pieceID': 'beta:bludger:1', 'actionType':'guard', 'targetID':'beta:seeker:0'},
+            {'pieceID': 'Alpha:HVA:0', 'actionType':'noop', 'targetID':'Alpha:HVA:0'},
+            {'pieceID': 'Alpha:Patrol:1', 'actionType':'shoot', 'targetID':'Bravo:HVA:0'},
+            {'pieceID': 'Bravo:HVA:0', 'actionType':'noop', 'targetID':'Bravo:HVA:0'},
+            {'pieceID': 'Bravo:Patrol:1', 'actionType':'guard', 'targetID':'Bravo:HVA:0'},
         ]
     }}
 
@@ -76,10 +79,10 @@ MOV_REQ_MSG_0 = {
     'data': {
         'kind': 'movementPhaseRequest',
         'movementSelections': [
-            {'pieceID': 'alpha:seeker:0', 'actionType':'noop'},
-            {'pieceID': 'alpha:bludger:1', 'actionType':'prograde'},
-            {'pieceID': 'beta:seeker:0', 'actionType':'noop'},
-            {'pieceID': 'beta:bludger:1', 'actionType':'retrograde'}
+            {'pieceID': 'Alpha:HVA:0', 'actionType':'noop'},
+            {'pieceID': 'Alpha:Patrol:1', 'actionType':'prograde'},
+            {'pieceID': 'Bravo:HVA:0', 'actionType':'noop'},
+            {'pieceID': 'Bravo:Patrol:1', 'actionType':'retrograde'}
         ]
     }}
 
@@ -685,7 +688,8 @@ def test_SingleUserGameServer_handle_engagement_action_selection(single_user_gam
         max_ring=1, 
         min_ring=1, 
         geo_ring=1,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_2,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
@@ -716,20 +720,20 @@ def test_SingleUserGameServer_handle_engagement_action_selection(single_user_gam
     assert rep_msg['data']['kind'] == 'engagementPhaseResponse'
     res_seq = rep_msg['data']['resolutionSequence']
     assert res_seq[0]['actionType'] == 'guard'
-    assert res_seq[0]['attackerID'] == 'alpha:bludger:1'
-    assert res_seq[0]['targetID'] == 'beta:seeker:0'
-    assert res_seq[0]['guardianID'] == 'beta:bludger:1'
-    assert res_seq[0]['probability'] == DGP.ENGAGE_PROBS[U.IN_SEC][U.GUARD]
+    assert res_seq[0]['attackerID'] == 'Alpha:Patrol:1'
+    assert res_seq[0]['targetID'] == 'Bravo:HVA:0'
+    assert res_seq[0]['guardianID'] == 'Bravo:Patrol:1'
+    assert res_seq[0]['probability'] == DGP.ENGAGE_PROBS[U.P1][U.IN_SEC][U.GUARD]
     # Cannot test success since probabilistic
 
     assert res_seq[1]['actionType'] == 'shoot'
-    assert res_seq[1]['attackerID'] == 'alpha:bludger:1'
+    assert res_seq[1]['attackerID'] == 'Alpha:Patrol:1'
     if res_seq[0]['success']:
-        assert res_seq[1]['targetID'] == 'beta:bludger:1'
+        assert res_seq[1]['targetID'] == 'Bravo:Patrol:1'
     else:
-        assert res_seq[1]['targetID'] == 'beta:seeker:0'
+        assert res_seq[1]['targetID'] == 'Bravo:HVA:0'
     assert res_seq[1]['guardianID'] == ''
-    assert res_seq[1]['probability'] == DGP.ENGAGE_PROBS[U.ADJ_SEC][U.SHOOT]
+    assert res_seq[1]['probability'] == DGP.ENGAGE_PROBS[U.P2][U.ADJ_SEC][U.SHOOT]
     # Cannot test success since probabilistic
 
     # assertions on game state
@@ -744,10 +748,11 @@ def test_SingleUserGameServer_handle_movement_action_selection(single_user_game_
         max_ring=1, 
         min_ring=1, 
         geo_ring=1,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_2,
         **DEFAULT_PARAMS_PARTIAL)
-    # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
-    #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
+    # game.game_state, game.token_catalog, game.n_tokens_Alpha, game.n_tokens_beta = \
+    #     game.initial_game_state(init_pattern_Alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
     # game.game_state[U.TURN_PHASE] = U.MOVEMENT
     game.update_turn_phase(U.MOVEMENT)
 
@@ -773,12 +778,12 @@ def test_SingleUserGameServer_handle_movement_action_selection(single_user_game_
     assert rep_msg['apiVersion'] == API_VER_NUM
     assert rep_msg['context'] == 'movementPhase'
     assert rep_msg['data']['kind'] == 'movementPhaseResponse'
-    assert len(rep_msg['data']['gameState']['tokenStates']) == 4
+    assert len(rep_msg['data']['gameState']['tokenStates']) == 22 #Number of tokens is always 11 per side - will create 'dead' tokens for games with < 10 Patrol + 1 HVA 
     token_states = {v[GS.PIECE_ID]:{} for v in rep_msg['data']['gameState']['tokenStates']}
-    # assert rep_msg['data']['alpha:seeker:0']['position'] == 1
-    # assert rep_msg['data']['alpha:bludger:1']['position'] == 2
-    # assert rep_msg['data']['beta:seeker:0']['position'] == 2
-    # assert rep_msg['data']['beta:bludger:1']['position'] == 1
+    # assert rep_msg['data']['Alpha:HVA:0']['position'] == 1
+    # assert rep_msg['data']['Alpha:Patrol:1']['position'] == 2
+    # assert rep_msg['data']['Bravo:HVA:0']['position'] == 2
+    # assert rep_msg['data']['Bravo:Patrol:1']['position'] == 1
 
 def test_SingleUserGameServer_handle_drift_request(single_user_game_server_fixture):
     """ test that a game advances past drift phase and responds with game state
@@ -824,10 +829,11 @@ def test_game_id(single_user_game_server_fixture):
         max_ring=1, 
         min_ring=1, 
         geo_ring=1,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_2,
         **DEFAULT_PARAMS_PARTIAL)
-    # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
-    #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
+    # game.game_state, game.token_catalog, game.n_tokens_Alpha, game.n_tokens_beta = \
+    #     game.initial_game_state(init_pattern_Alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
     # game.game_state[U.TURN_PHASE] = U.ENGAGEMENT
     game.update_turn_phase(U.ENGAGEMENT)
 
