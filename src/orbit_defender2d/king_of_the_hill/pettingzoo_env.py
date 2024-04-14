@@ -1539,8 +1539,10 @@ class parallel_env(ParallelEnv):
         '''Displays winner clearly and updates score when game finishes'''
         if winner == U.P1:
             win_color = self._p1_color
+            winner = self.plr1_alias
         elif winner == U.P2:
             win_color = self._p2_color
+            winner = self.plr2_alias
         else:
             win_color = self._null_color
 
