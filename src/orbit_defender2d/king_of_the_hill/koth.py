@@ -214,8 +214,8 @@ class KOTHGame:
             offensive_ammo = 0
             seeker_fuel_points_factor_offense = 1.0
             seeker_fuel_points_factor_defense = 1.2
-            bludger_fuel_points_factor_offense = offensive_n_tokens/100
-            bludger_fuel_points_factor_defense = defensive_n_tokens/100
+            bludger_fuel_points_factor_offense = 100/(offensive_n_tokens*offensive_fuel)
+            bludger_fuel_points_factor_defense = 100/(defensive_n_tokens*defensive_fuel)
             in_goal_points_offense = 10
             in_goal_points_defense = 12 #Defense should get more goal points to emphasize surviving in the goal sector, also this means that if all patrols die, the defense will win by default.
 
