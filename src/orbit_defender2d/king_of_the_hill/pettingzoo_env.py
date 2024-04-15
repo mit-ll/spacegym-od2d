@@ -1551,7 +1551,7 @@ class parallel_env(ParallelEnv):
         l_font_size = self._large_font.size(' ')
         winner_title = self._very_large_font_bold.render("Winner: ", True, self._title_color)
         self._screen.blit(winner_title, ((self._x_dim / 2) - (5 * vl_font_size[0]), self._margins[1]))
-        winner_text = self._very_large_font_bold.render(winner.capitalize(), True, win_color)
+        winner_text = self._very_large_font_bold.render(winner, True, win_color)
         self._screen.blit(winner_text, ((self._x_dim / 2) + (12 * vl_font_size[0]), self._margins[1]))
 
         # display score
