@@ -329,7 +329,7 @@ def run_listener(game_server, listener_client, render=True):
     while tmp_game_state[GS.GAME_DONE] is False:
         tmp_game_state = listener_client.game_state
         local_game = penv.kothgame
-        local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(tmp_game_state)
+        local_game.game_state, local_game.token_catalog, local_game.n_tokens_alpha, local_game.n_tokens_beta = local_game.arbitrary_game_state_from_server(GAME_PARAMS,tmp_game_state)
         penv.kothgame = local_game
         if listener_client.actions is not None:
             new_dict = {}

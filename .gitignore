@@ -3,21 +3,10 @@ __pycache__/
 .hypothesis/
 .DS_Store
 
-# VSCode
 .vscode/
 
 venv
 venv/**
-
-oryx*
-
-.replit
-replit.nix
-pyproject.toml
-
-# Replit run files
-main.py
-run_*.py
 
 ./logs/*
 game_log*

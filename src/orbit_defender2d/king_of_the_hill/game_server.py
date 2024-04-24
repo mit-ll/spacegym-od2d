@@ -8,7 +8,7 @@ import zmq
 import json
 import multiprocessing
 import uuid
-
+from collections import namedtuple, OrderedDict
 from bidict import bidict
 from tornado import ioloop
 from zmq.eventloop import zmqstream
@@ -17,7 +17,8 @@ from collections import namedtuple
 from copy import deepcopy
 
 import orbit_defender2d.utils.utils as U
-from orbit_defender2d.king_of_the_hill.koth import KOTHGame
+from orbit_defender2d.utils.orbit_grid import OrbitGrid
+from orbit_defender2d.king_of_the_hill.koth import KOTHGame, KOTHTokenState, Satellite, get_legal_verbose_actions, get_token_adjacency_graph
 
 TCP_PORT = 'tcp_port'
 ROUTER_PORT = 'router_port'
@@ -960,6 +961,95 @@ class SingleUserGameServer(GameServer):
 
 
 ##### Game Server Utility functions #####
+
+def arbitrary_game_state_from_server(game_params, cur_game_state) -> Tuple:
+    ''' returns kothgame formatted game_state based on gameserver information. 
+        Used to keep the KothGame functions up to date with the game server.
+
+    Args:
+        game_params (namedtuple): game parameters as KOTHGame input args named tuple
+        cur_game_state (Dict): state of game passed from the game server
+        
+    Returns:
+        game_state (Dict): state of game and tokens within game
+        token_catalog (Dict): token states with token names as keys
+        n_token_alpha (int): number of tokens for player alpha
+        n_token_beta (int): number of tokens for player beta 
+    '''
+    game_state = {U.P1:dict(), U.P2:dict()}
+    token_catalog = OrderedDict()
+    
+    # Specify goal locations (i.e. "hills") in geo 180 degrees offset
+    game_state[U.GOAL1] = cur_game_state[GOAL_ALPHA] #p1hill
+    game_state[U.GOAL2] = cur_game_state[GOAL_BETA] #p2hill
+
+    n_tokens_alpha = 0
+    n_tokens_beta = 0
+    p1_state = [] 
+    p2_state = []
+
+    for token_state in cur_game_state[TOKEN_STATES]:
+        if U.P1 in token_state[PIECE_ID]:
+            p1_state.append(None)
+            p1_state[-1] = token_catalog[token_state[PIECE_ID]] = KOTHTokenState(
+                Satellite(fuel=token_state[FUEL], ammo=token_state[AMMO]),
+                role=token_state[ROLE],
+                position=token_state[POSITION])
+            n_tokens_alpha += 1
+        else:
+            p2_state.append(None)
+            p2_state[-1] = token_catalog[token_state[PIECE_ID]] = KOTHTokenState(
+                Satellite(fuel=token_state[FUEL], ammo=token_state[AMMO]),
+                role=token_state[ROLE],
+                position=token_state[POSITION])
+            n_tokens_beta += 1
+
+    game_state[U.P1][U.TOKEN_STATES] = p1_state #p1state
+    game_state[U.P1][U.SCORE] = cur_game_state[SCORE_ALPHA] #p1score
+    game_state[U.P2][U.TOKEN_STATES] = p2_state #p2state
+    game_state[U.P2][U.SCORE] = cur_game_state[SCORE_BETA] #p2score
+    game_state[U.TURN_COUNT] = cur_game_state[TURN_NUMBER] #turn number
+    game_state[U.GAME_DONE] = cur_game_state[GAME_DONE] #game done
+    game_state[U.TURN_PHASE] = cur_game_state[TURN_PHASE] #turn phase
+
+    # update token adjacency graph
+    board_grid = OrbitGrid(n_rings=game_params.max_ring)
+    game_state[U.TOKEN_ADJACENCY] = get_token_adjacency_graph(board_grid, token_catalog)
+
+    # update legal actions
+    game_state[U.LEGAL_ACTIONS] = get_legal_verbose_actions(
+        turn_phase=game_state[U.TURN_PHASE],
+        token_catalog=token_catalog,
+        board_grid=board_grid,
+        token_adjacency_graph=game_state[U.TOKEN_ADJACENCY],
+        min_ring=game_params.min_ring,
+        max_ring=game_params.max_ring)
+
+    return game_state, token_catalog, n_tokens_alpha, n_tokens_beta
+
+def arbitrary_engagement_outcomes_from_server(game_params,engagement_outcomes):
+    ''' returns kothgame formatted engagement outcomes based on gameserver information. 
+        Used to keep the KothGame functions up to date with the game server.
+       
+    Args:
+        game_params (namedtuple): game parameters as KOTHGame input args named tuple
+        engagement_outcomes: list of dicts with engagement outcomes from game server
+        
+    Returns:
+        tuple_engagement_outcomes: List of engagement outcome tuples
+    '''
+    list_engagement_outcomes = []
+    dict_engagement_outcomes = {}
+    for engagement in engagement_outcomes:
+        list_engagement_outcomes.append(U.EngagementOutcomeTuple(
+                action_type=engagement[ACTION_TYPE],
+                attacker=engagement[ATTACKER_ID],
+                target=engagement[TARGET_ID],  
+                guardian=engagement[GUARDIAN_ID], 
+                prob=engagement[PROB], 
+                success=engagement[SUCCESS]))
+        dict_engagement_outcomes[engagement[ATTACKER_ID]] = list_engagement_outcomes[-1]
+    return list_engagement_outcomes, dict_engagement_outcomes
 
 def assert_valid_game_state(game_state):
     '''check response from game server gives valid game state
