@@ -54,13 +54,13 @@ pytest tests/test_game_server.py            # run game server tests
 
 For more details, please see the [__Game Rules Wiki__](https://github.com/mpj15/spacegym-od2d/wiki) and access the User Guide. 
 
-1. In a terminal window, navigate to your src folder inside the od2d_learn folder from the GitHub repository. 
-2. Activate od2d_learn by typing the following command: 
+1. In a terminal window, navigate to your src folder inside the spacegym-od2d folder from the GitHub repository. 
+2. Activate the orbit_defender2d environment by typing the following command: 
 
 ```bash
-conda activate od2d_learn
+conda activate orbit_defender2d
 ```
-Next to your user ID in the terminal, it should now say “od2d_learn” instead of "base". 
+Next to your user ID in the terminal, it should now say orbit_defender2d instead of "base". 
 
 3. Use python to start the game file that you are choosing to run. Please reference the User Guide for a comprehensive list of file names. The following command will run a Human v. AI game. 
 
