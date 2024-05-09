@@ -26,7 +26,7 @@ def game_state_nonterminal_st(draw):
     fuels_alpha = draw(st.lists(
         elements=st.floats(
             min_value=DGP.MIN_FUEL, 
-            max_value=max(DGP.INIT_FUEL[U.SEEKER], DGP.INIT_FUEL[U.BLUDGER]), 
+            max_value=max(DGP.INIT_FUEL[U.P1][U.SEEKER], DGP.INIT_FUEL[U.P1][U.BLUDGER]), 
             allow_infinity=False, 
             allow_nan=False, 
             exclude_min=True),
@@ -34,7 +34,7 @@ def game_state_nonterminal_st(draw):
     fuels_beta = draw(st.lists(
         elements=st.floats(
             min_value=DGP.MIN_FUEL, 
-            max_value=max(DGP.INIT_FUEL[U.SEEKER], DGP.INIT_FUEL[U.BLUDGER]), 
+            max_value=max(DGP.INIT_FUEL[U.P2][U.SEEKER], DGP.INIT_FUEL[U.P2][U.BLUDGER]), 
             allow_infinity=False, 
             allow_nan=False, 
             exclude_min=True),
@@ -71,13 +71,13 @@ def game_state_nonterminal_st(draw):
     game.game_state[U.GOAL2] = draw(st.integers(min_value=min_sector, max_value=max_sector))
     game.game_state[U.P1][U.SCORE] = draw(st.floats(
         min_value=0.0, 
-        max_value=DGP.WIN_SCORE, 
+        max_value=DGP.WIN_SCORE[U.P1], 
         allow_infinity=False, 
         allow_nan=False, 
         exclude_max=True))
     game.game_state[U.P2][U.SCORE] = draw(st.floats(
         min_value=0.0, 
-        max_value=DGP.WIN_SCORE, 
+        max_value=DGP.WIN_SCORE[U.P2], 
         allow_infinity=False, 
         allow_nan=False, 
         exclude_max=True))

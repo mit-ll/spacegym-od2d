@@ -5,8 +5,8 @@
 from collections import namedtuple
 
 # unified variable names
-P1 = 'alpha'
-P2 = 'beta'
+P1 = 'Alpha'
+P2 = 'Bravo'
 TOKEN_DELIMITER = ':'
 GOAL1 = 'goal_sector_alpha'
 GOAL2 = 'goal_sector_beta'
@@ -15,10 +15,11 @@ TURN_COUNT = 'turn_count'
 TURN_PHASE = 'turn_phase'
 GAME_DONE = 'game_done'
 SCORE = 'score'
+FUEL_SCORE = 'fuel_score'
 TOKEN_ADJACENCY = 'token_adjacency_graph'
 LEGAL_ACTIONS = 'legal_verbose_actions'
 TURN_PHASE_LIST = [MOVEMENT, ENGAGEMENT, DRIFT] = ['movement', 'engagement', 'drift']
-PIECE_ROLES = [SEEKER, BLUDGER] = ['seeker', 'bludger']
+PIECE_ROLES = [SEEKER, BLUDGER] = ['HVA', 'Patrol']
 MOVEMENT_TYPES = [NOOP, PROGRADE, RETROGRADE, RADIAL_IN, RADIAL_OUT] = \
                 ['noop', 'prograde', 'retrograde', 'radial_in', 'radial_out']
 ENGAGEMENT_TYPES = [SHOOT, COLLIDE, GUARD] = ['shoot', 'collide', 'guard']
@@ -26,6 +27,7 @@ ENGAGEMENT_TYPES = [SHOOT, COLLIDE, GUARD] = ['shoot', 'collide', 'guard']
 INVALID_ACTION = 'invalid_action'
 # TCP_PORT = 'tcp_port'
 # JSON_PROPERTY_NAMES = [JSON_ENG_RES_SEQ] = ['engagementResolutionSequence']
+
 
 MovementTuple = namedtuple('MovementTuple', ['action_type'])
 EngagementTuple = namedtuple('EngagementTuple', ['action_type', 'target', 'prob'])

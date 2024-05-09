@@ -1,6 +1,14 @@
 *.egg-info/
 __pycache__/
 .hypothesis/
+.DS_Store
 
-# VSCode
 .vscode/
+
+venv
+venv/**
+
+./logs/*
+game_log*
+
+Archive

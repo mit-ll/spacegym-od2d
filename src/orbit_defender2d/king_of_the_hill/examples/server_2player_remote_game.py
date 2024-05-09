@@ -23,7 +23,8 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
     max_ring=DGP.MAX_RING,
     min_ring=DGP.MIN_RING,
     geo_ring=DGP.GEO_RING,
-    init_board_pattern=DGP.INIT_BOARD_PATTERN,
+    init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+    init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
     init_fuel=DGP.INIT_FUEL,
     init_ammo=DGP.INIT_AMMO,
     min_fuel=DGP.MIN_FUEL,
@@ -34,7 +35,9 @@ GAME_PARAMS = koth.KOTHGameInputArgs(
     adj_goal_points=DGP.ADJ_GOAL_POINTS,
     fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
     win_score=DGP.WIN_SCORE,
-    max_turns=DGP.MAX_TURNS)
+    max_turns=DGP.MAX_TURNS,
+    fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    )
 
 
 def run_server_2player_remote_game():

@@ -11,7 +11,7 @@ import time
 import zmq
 import orbit_defender2d.utils.utils as U
 import orbit_defender2d.king_of_the_hill.game_server as GS
-import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+import orbit_defender2d.king_of_the_hill.default_game_parameters_old as DGP
 from orbit_defender2d.king_of_the_hill import koth
 from numpy.random import choice
 

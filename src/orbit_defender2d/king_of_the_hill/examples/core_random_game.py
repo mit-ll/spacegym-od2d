@@ -11,21 +11,25 @@ import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 from orbit_defender2d.king_of_the_hill import koth
 from orbit_defender2d.king_of_the_hill.koth import KOTHGame
 
-INIT_BOARD_PATTERN_0 = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] 
-INIT_BOARD_PATTERN_2 = [(0,1)]
-
-DEFAULT_PARAMS_PARTIAL = {
-    'init_fuel' : DGP.INIT_FUEL,
-    'init_ammo' : DGP.INIT_AMMO,
-    'min_fuel' : DGP.MIN_FUEL,
-    'fuel_usage' : DGP.FUEL_USAGE,
-    'engage_probs' : DGP.ENGAGE_PROBS,
-    'illegal_action_score' : DGP.ILLEGAL_ACT_SCORE,
-    'in_goal_points' : DGP.IN_GOAL_POINTS,
-    'adj_goal_points' : DGP.ADJ_GOAL_POINTS,
-    'fuel_points_factor': DGP.FUEL_POINTS_FACTOR,
-    'win_score' : DGP.WIN_SCORE,
-    'max_turns' : DGP.MAX_TURNS}
+GAME_PARAMS = koth.KOTHGameInputArgs(
+    max_ring=DGP.MAX_RING,
+    min_ring=DGP.MIN_RING,
+    geo_ring=DGP.GEO_RING,
+    init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+    init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
+    init_fuel=DGP.INIT_FUEL,
+    init_ammo=DGP.INIT_AMMO,
+    min_fuel=DGP.MIN_FUEL,
+    fuel_usage=DGP.FUEL_USAGE,
+    engage_probs=DGP.ENGAGE_PROBS,
+    illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
+    in_goal_points=DGP.IN_GOAL_POINTS,
+    adj_goal_points=DGP.ADJ_GOAL_POINTS,
+    fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
+    win_score=DGP.WIN_SCORE,
+    max_turns=DGP.MAX_TURNS,
+    fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    )
 
 def print_game_info(game):
     # print("alpha player state: ")
@@ -48,12 +52,7 @@ def print_actions(actions):
 def run_core_random_game():
 
     # create and initialize game
-    game = KOTHGame(
-        max_ring=5, 
-        min_ring=1, 
-        geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
-        **DEFAULT_PARAMS_PARTIAL)
+    game = KOTHGame(**GAME_PARAMS._asdict())
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
 

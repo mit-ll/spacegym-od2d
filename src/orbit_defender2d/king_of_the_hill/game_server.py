@@ -8,7 +8,7 @@ import zmq
 import json
 import multiprocessing
 import uuid
-
+from collections import namedtuple, OrderedDict
 from bidict import bidict
 from tornado import ioloop
 from zmq.eventloop import zmqstream
@@ -17,7 +17,8 @@ from collections import namedtuple
 from copy import deepcopy
 
 import orbit_defender2d.utils.utils as U
-from orbit_defender2d.king_of_the_hill.koth import KOTHGame
+from orbit_defender2d.utils.orbit_grid import OrbitGrid
+from orbit_defender2d.king_of_the_hill.koth import KOTHGame, KOTHTokenState, Satellite, get_legal_verbose_actions, get_token_adjacency_graph
 
 TCP_PORT = 'tcp_port'
 ROUTER_PORT = 'router_port'
@@ -51,6 +52,7 @@ TOKEN_STATE_FIELDS = [PIECE_ID, FUEL, ROLE, POSITION, AMMO, LEGAL_ACTIONS] = \
 
 MOVEMENT_SELECTIONS = 'movementSelections'
 ENGAGEMENT_SELECTIONS = 'engagementSelections'
+ACTION_SELECTIONS = 'actionSelections'
 RESOLUTION_SEQUENCE = 'resolutionSequence'
 ACTION_TYPE = 'actionType'
 TARGET_ID = 'targetID'
@@ -142,7 +144,8 @@ class GameServer(multiprocessing.Process):
         data_kind: str, 
         game_state: Dict, 
         engagement_outcomes: List,
-        is_2player: bool=False) -> Dict:
+        is_2player: bool=False,
+        actions=None) -> Dict:
         ''' Format game state into API-Compatible dictionary to be sent as response message
 
         Args:
@@ -164,9 +167,9 @@ class GameServer(multiprocessing.Process):
         rep_msg[DATA] = dict()
         rep_msg[DATA][KIND] = data_kind
         rep_msg[DATA][GAME_STATE] = game_state
+        rep_msg[DATA][ACTION_SELECTIONS] = actions
         if data_kind == ENGAGE_PHASE_RESP:
             rep_msg[DATA][RESOLUTION_SEQUENCE] = engagement_outcomes
-
         if is_2player:
             assert api_version.split('.')[-1] == '2p', "Expected 2-player API, got {}".format(api_version)
             reg = []
@@ -326,7 +329,6 @@ class TwoPlayerGameServer(GameServer):
 
             # start game if both players registered (condition decided by register func)
             if start_game:
-                
                 # reset game, access and format game state data
                 self.game.reset_game()
                 game_state = self.get_game_state()
@@ -477,7 +479,7 @@ class TwoPlayerGameServer(GameServer):
 
         # if both player requests are present
         if self.player_input_queue_filled():
-
+        
             # check for matching context for both player inputs
             # NOTE: check_game_context only checks one request, not matching request from both players
             cntx = self.player_input_queue[player_id][CONTEXT]
@@ -493,6 +495,7 @@ class TwoPlayerGameServer(GameServer):
                 # reset game state
                 self.game.reset_game()
                 data_kind = GAME_RESET_RESP
+                player_actions = None
 
             elif cntx in [MOVE_PHASE, ENGAGE_PHASE, DRIFT_PHASE]:
 
@@ -528,7 +531,8 @@ class TwoPlayerGameServer(GameServer):
                 data_kind=data_kind,
                 game_state=game_state, 
                 engagement_outcomes=engagement_outcomes,
-                is_2player=True)
+                is_2player=True,
+                actions=player_actions)
             self.publisher_socket.send_json(resp_msg)
 
             # reset player inputs
@@ -954,3 +958,189 @@ class SingleUserGameServer(GameServer):
         self.game.apply_verbose_actions(actions=actions)
 
         return self.get_game_state()
+
+
+##### Game Server Utility functions #####
+
+def arbitrary_game_state_from_server(game_params, cur_game_state) -> Tuple:
+    ''' returns kothgame formatted game_state based on gameserver information. 
+        Used to keep the KothGame functions up to date with the game server.
+
+    Args:
+        game_params (namedtuple): game parameters as KOTHGame input args named tuple
+        cur_game_state (Dict): state of game passed from the game server
+        
+    Returns:
+        game_state (Dict): state of game and tokens within game
+        token_catalog (Dict): token states with token names as keys
+        n_token_alpha (int): number of tokens for player alpha
+        n_token_beta (int): number of tokens for player beta 
+    '''
+    game_state = {U.P1:dict(), U.P2:dict()}
+    token_catalog = OrderedDict()
+    
+    # Specify goal locations (i.e. "hills") in geo 180 degrees offset
+    game_state[U.GOAL1] = cur_game_state[GOAL_ALPHA] #p1hill
+    game_state[U.GOAL2] = cur_game_state[GOAL_BETA] #p2hill
+
+    n_tokens_alpha = 0
+    n_tokens_beta = 0
+    p1_state = [] 
+    p2_state = []
+
+    for token_state in cur_game_state[TOKEN_STATES]:
+        if U.P1 in token_state[PIECE_ID]:
+            p1_state.append(None)
+            p1_state[-1] = token_catalog[token_state[PIECE_ID]] = KOTHTokenState(
+                Satellite(fuel=token_state[FUEL], ammo=token_state[AMMO]),
+                role=token_state[ROLE],
+                position=token_state[POSITION])
+            n_tokens_alpha += 1
+        else:
+            p2_state.append(None)
+            p2_state[-1] = token_catalog[token_state[PIECE_ID]] = KOTHTokenState(
+                Satellite(fuel=token_state[FUEL], ammo=token_state[AMMO]),
+                role=token_state[ROLE],
+                position=token_state[POSITION])
+            n_tokens_beta += 1
+
+    game_state[U.P1][U.TOKEN_STATES] = p1_state #p1state
+    game_state[U.P1][U.SCORE] = cur_game_state[SCORE_ALPHA] #p1score
+    game_state[U.P2][U.TOKEN_STATES] = p2_state #p2state
+    game_state[U.P2][U.SCORE] = cur_game_state[SCORE_BETA] #p2score
+    game_state[U.TURN_COUNT] = cur_game_state[TURN_NUMBER] #turn number
+    game_state[U.GAME_DONE] = cur_game_state[GAME_DONE] #game done
+    game_state[U.TURN_PHASE] = cur_game_state[TURN_PHASE] #turn phase
+
+    # update token adjacency graph
+    board_grid = OrbitGrid(n_rings=game_params.max_ring)
+    game_state[U.TOKEN_ADJACENCY] = get_token_adjacency_graph(board_grid, token_catalog)
+
+    # update legal actions
+    game_state[U.LEGAL_ACTIONS] = get_legal_verbose_actions(
+        turn_phase=game_state[U.TURN_PHASE],
+        token_catalog=token_catalog,
+        board_grid=board_grid,
+        token_adjacency_graph=game_state[U.TOKEN_ADJACENCY],
+        min_ring=game_params.min_ring,
+        max_ring=game_params.max_ring)
+
+    return game_state, token_catalog, n_tokens_alpha, n_tokens_beta
+
+def arbitrary_engagement_outcomes_from_server(game_params,engagement_outcomes):
+    ''' returns kothgame formatted engagement outcomes based on gameserver information. 
+        Used to keep the KothGame functions up to date with the game server.
+       
+    Args:
+        game_params (namedtuple): game parameters as KOTHGame input args named tuple
+        engagement_outcomes: list of dicts with engagement outcomes from game server
+        
+    Returns:
+        tuple_engagement_outcomes: List of engagement outcome tuples
+    '''
+    list_engagement_outcomes = []
+    dict_engagement_outcomes = {}
+    for engagement in engagement_outcomes:
+        list_engagement_outcomes.append(U.EngagementOutcomeTuple(
+                action_type=engagement[ACTION_TYPE],
+                attacker=engagement[ATTACKER_ID],
+                target=engagement[TARGET_ID],  
+                guardian=engagement[GUARDIAN_ID], 
+                prob=engagement[PROB], 
+                success=engagement[SUCCESS]))
+        dict_engagement_outcomes[engagement[ATTACKER_ID]] = list_engagement_outcomes[-1]
+    return list_engagement_outcomes, dict_engagement_outcomes
+
+def assert_valid_game_state(game_state):
+    '''check response from game server gives valid game state
+    '''
+    
+    # turn counter
+    assert isinstance(game_state[TURN_NUMBER], int)
+    assert game_state[TURN_NUMBER] >= 0
+
+    # turn phase
+    assert game_state[TURN_PHASE] in U.TURN_PHASE_LIST
+
+    # game done
+    assert isinstance(game_state[GAME_DONE], bool)
+
+    # goal positions
+    assert isinstance(game_state[GOAL_ALPHA], int)
+    # assert 0 < game_state[GS.GOAL_ALPHA] <= game_board.n_sectors
+    assert isinstance(game_state[GOAL_BETA], int)
+    # assert 0 < game_state[GS.GOAL_BETA] <= game_board.n_sectors
+
+def print_game_info(game_state):
+    '''
+    Print the game state information from the game server.
+    This is the game server version of game state, so not compatible with the kothgame game state.
+    '''
+    print("STATES:")
+    for tok in game_state[TOKEN_STATES]:
+        print("   {:<16s}| position: {:<4d}| fuel: {:<8.1f} ".format(tok[PIECE_ID], tok[POSITION], tok[FUEL]))
+    print(U.P1+" | "+U.P2+" score: {}|{}".format(game_state[SCORE_ALPHA],game_state[SCORE_BETA]))
+
+def print_engagement_outcomes_list(engagement_outcomes):
+    '''
+    The engagement outcomes from the game server are a list of dicts instead of a list of named tuples like the kothgame engagement outcomes.
+    See print_engagement_outcomes in koth.py for the kothgame version.
+    '''
+    print("ENGAGEMENT OUTCOMES:")
+    # if engagement_outcomes is empty print No engagements
+    if not engagement_outcomes:
+        print("    No engagements")
+    else:
+        # print the engagement outcomes for guarding actions first
+        print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format("Action", "Attacker", "Guardian", "Target", "Result"))
+        for egout in engagement_outcomes:
+            success_status = "Success" if egout[SUCCESS] else "Failure"
+            if egout[ACTION_TYPE] == U.SHOOT or egout[ACTION_TYPE] == U.COLLIDE:
+                print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                    egout[ACTION_TYPE], egout[ATTACKER_ID], "", egout[TARGET_ID], success_status))
+            elif egout[ACTION_TYPE] == U.GUARD:
+                if isinstance(egout[ATTACKER_ID], str):
+                    print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                        egout[ACTION_TYPE], egout[ATTACKER_ID], egout[GUARDIAN_ID], egout[TARGET_ID], success_status))
+                else:
+                    print("   {:<10s} | {:<16s} | {:<16s} | {:<16s} |---> {}".format(
+                        egout[ACTION_TYPE], "", egout[GUARDIAN_ID], egout[TARGET_ID], success_status))
+            elif egout[ACTION_TYPE] == U.NOOP:
+                print("NOOP")
+            else:
+                raise ValueError("Unrecognized action type {}".format(egout[ACTION_TYPE]))
+
+def print_endgame_status(cur_game_state):
+    '''
+    Print the endgame scores, winner, and termination condition.
+    '''
+
+    winner = None
+    #alpha_score = penv.kothgame.game_state[U.P1][U.SCORE]
+    #beta_score = penv.kothgame.game_state[U.P2][U.SCORE]
+    alpha_score = cur_game_state[SCORE_ALPHA]
+    beta_score = cur_game_state[SCORE_BETA]
+    
+    if alpha_score > beta_score:
+        winner = U.P1
+    elif beta_score > alpha_score:
+        winner = U.P2
+    else:
+        winner = 'draw'
+    print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score))
+
+    # The following requires the input arguments to the koth game, so it is better to get this from a similar koth print function.
+    # if cur_game_state[TOKEN_STATES][0]['fuel'] <= DGP.MIN_FUEL:
+    #     term_cond = "alpha out of fuel"
+    # elif cur_game_state[TOKEN_STATES][1]['fuel'] <= DGP.MIN_FUEL:
+    #     term_cond = "beta out of fuel"
+    # elif cur_game_state[SCORE_ALPHA] >= DGP.WIN_SCORE[U.P1]:
+    #     term_cond = "alpha reached Win Score"
+    # elif cur_game_state[SCORE_BETA]  >= DGP.WIN_SCORE[U.P2]:
+    #     term_cond = "beta reached Win Score"
+    # elif cur_game_state[TURN_NUMBER]  >= DGP.MAX_TURNS:
+    #     term_cond = "max turns reached" 
+    # else:
+    #     term_cond = "unknown"
+    # print("Termination condition: {}".format(term_cond))
+

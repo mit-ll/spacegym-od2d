@@ -16,13 +16,15 @@ setup(name="orbit_defender2d",
       package_dir={'': 'src'},
       python_requires=">=3",
       install_requires=[
-        "gymnasium",
-        "pettingzoo",
+        "numpy==1.21.6",
+        "gym==0.21.0", #requires older version of setuptools and pip listed in requirements.txt
+        "torch==1.10.1",        
+        "pettingzoo==1.15.0",
         "networkx",
         "matplotlib",
         "pyzmq",
-        "tornado",
-        "pygame",
+        "tornado==6.1",
+        "pygame==2.0.3",
         "bidict",
       ]
       )

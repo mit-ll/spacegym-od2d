@@ -9,6 +9,7 @@ import numpy as np
 import orbit_defender2d.utils.utils as U
 import orbit_defender2d.king_of_the_hill.pettingzoo_env as PZE
 from orbit_defender2d.king_of_the_hill import koth
+from orbit_defender2d.king_of_the_hill import default_game_parameters as DGP
 
 if __name__ == "__main__":
 
@@ -60,7 +61,26 @@ if __name__ == "__main__":
         winner = U.P2
     else:
         winner = 'draw'
-    print("\n====GAME FINISHED====\nWinner: {}\nScore: {}|{}\n=====================\n".format(winner, alpha_score, beta_score))
+    
+    if penv.kothgame.game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel <= DGP.MIN_FUEL:
+        term_cond = "alpha seeker out of fuel"
+    elif penv.kothgame.game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel <= DGP.MIN_FUEL:
+        term_cond = "beta seeker out of fuel"
+    elif alpha_score >= DGP.WIN_SCORE:
+        term_cond = "alpha reached Win Score"
+    elif beta_score  >= DGP.WIN_SCORE:
+        term_cond = "beta reached Win Score"
+    elif penv.kothgame.game_state[U.TURN_COUNT]  >= DGP.MAX_TURNS:
+        term_cond = "max turns reached" 
+    else:
+        term_cond = "unknown"
+
+    print(
+        "\n====GAME FINISHED====\n" +
+        "Winner: {} \n".format(winner) + 
+        "Score: {}|{}\n".format(alpha_score, beta_score) + 
+        "=====================\n")
+    print("Termination condition: {}".format(term_cond))
 
     if penv.render_active:
         penv.draw_win(winner)

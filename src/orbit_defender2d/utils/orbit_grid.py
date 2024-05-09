@@ -57,6 +57,7 @@ class OrbitGrid:
 
     def sector_coord2num(self, ring:int, azim:int) -> int:
         '''convert sector coordinates (ring, azimuth) to sector number
+            Currenlty only used for determining the goal sectors - doesn't support rendering properly if the min ring >1
 
         Args:
             ring (int): ring of sector

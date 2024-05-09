@@ -14,9 +14,11 @@ from tabnanny import verbose
 import numpy as np
 import json
 import pygame as pg
+from collections import namedtuple, OrderedDict
 
 from pathlib import Path
-from gymnasium import spaces
+#from gymnasium import spaces
+from gym import spaces
 from collections import namedtuple, OrderedDict
 from pettingzoo import ParallelEnv
 from pettingzoo.utils import wrappers
@@ -24,69 +26,224 @@ from pettingzoo.utils import parallel_to_aec
 from pygame import gfxdraw      # needs its import to work as pg.gfxdraw for some reason
 
 import orbit_defender2d.utils.utils as U
-import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+#import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
 import orbit_defender2d.king_of_the_hill.utils_for_json_display as UJD
 import orbit_defender2d.king_of_the_hill.game_server as GS
 import orbit_defender2d.king_of_the_hill.render_controls as RC
 from orbit_defender2d.king_of_the_hill import koth
+from orbit_defender2d.king_of_the_hill.koth import KOTHTokenState
+from orbit_defender2d.utils.satellite import Satellite
 
-# observation space components
-TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
+def init_with_defaults():
+    '''
+    Initialize game with default parameters by importing DGP
+    '''
+    import orbit_defender2d.king_of_the_hill.default_game_parameters as DGP
+    
+    # Setup globals
+    global TokenComponentSpaces
+    global GAME_PARAMS
+    global MAX_AMMO
+    global MAX_N_TOKENS
+    global N_BITS_OBS_SCORE
+    global N_BITS_OBS_TURN_COUNT
+    global N_BITS_OBS_TURN_PHASE
+    global N_BITS_OBS_HILL
+    global N_BITS_OBS_SCOREBOARD
+    global N_BITS_OBS_OWN_PIECE
+    global N_BITS_OBS_ROLE
+    global N_BITS_OBS_POSITION
+    global N_BITS_OBS_FUEL
+    global N_BITS_OBS_AMMO
+    global N_BITS_OBS_PER_TOKEN
+    global N_BITS_OBS_TOKENS_PER_PLAYER
+    global N_BITS_OBS_PER_PLAYER
+    global N_BITS_ACT_PER_TOKEN
+    global N_BITS_ACT_PER_PLAYER
+    
+    # observation space components
+    TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
+    
+    # Game Parameters
+    GAME_PARAMS = koth.KOTHGameInputArgs(
+        max_ring=DGP.MAX_RING,
+        min_ring=DGP.MIN_RING,
+        geo_ring=DGP.GEO_RING,
+        init_board_pattern_p1=DGP.INIT_BOARD_PATTERN_P1,
+        init_board_pattern_p2=DGP.INIT_BOARD_PATTERN_P2,
+        init_fuel=DGP.INIT_FUEL,
+        init_ammo=DGP.INIT_AMMO,
+        min_fuel=DGP.MIN_FUEL,
+        fuel_usage=DGP.FUEL_USAGE,
+        engage_probs=DGP.ENGAGE_PROBS,
+        illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
+        in_goal_points=DGP.IN_GOAL_POINTS,
+        adj_goal_points=DGP.ADJ_GOAL_POINTS,
+        fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
+        win_score=DGP.WIN_SCORE,
+        max_turns=DGP.MAX_TURNS,
+        fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,
+        )
 
-# Game Parameters
-GAME_PARAMS = koth.KOTHGameInputArgs(
-    max_ring=DGP.MAX_RING,
-    min_ring=DGP.MIN_RING,
-    geo_ring=DGP.GEO_RING,
-    init_board_pattern=DGP.INIT_BOARD_PATTERN,
-    init_fuel=DGP.INIT_FUEL,
-    init_ammo=DGP.INIT_AMMO,
-    min_fuel=DGP.MIN_FUEL,
-    fuel_usage=DGP.FUEL_USAGE,
-    engage_probs=DGP.ENGAGE_PROBS,
-    illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
-    in_goal_points=DGP.IN_GOAL_POINTS,
-    adj_goal_points=DGP.ADJ_GOAL_POINTS,
-    fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
-    win_score=DGP.WIN_SCORE,
-    max_turns=DGP.MAX_TURNS)
+    # make all of these globals:
+    #Set max ammo for later tests
+    MAX_AMMO = 10
+    MAX_N_TOKENS = 11
+    # observation space flat encoding
+    # Note: Some hard-coded values, some taken from DGP. 
+    # Hard-coding and then cross checking helps
+    # to avoid in-advertant observation space dimension changes
+    # due changes in dependent variable
+    N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
+    N_BITS_OBS_TURN_COUNT = len(U.int2bitlist(int(DGP.MAX_TURNS)))  # assumes max turns of 100 -> 7 bits binary
+    N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
+    N_BITS_OBS_HILL = int(DGP.NUM_SPACES+1+1) #number of spaces plus 1 plus a boolen for owner of hill
+    N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
+    N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
+    N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
+    N_BITS_OBS_POSITION = int(DGP.NUM_SPACES)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
+    N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
+    N_BITS_OBS_AMMO = max(
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
+    #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
+    N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #number of tokens per player * bits per token
+    N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
-# observation space flat encoding
-# Note: hard-coding and then cross checking in order
-# to avoid in-advertant observation space dimension changes
-# due changes in dependent variable
-N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
-N_BITS_OBS_TURN_COUNT = 7  # assumes max turns of 100 -> 7 bits binary
-N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
-N_BITS_OBS_HILL = 64  # own_hill boolean + 63 sectors as one-hot
-N_BITS_OBS_SCOREBOARD = 162  # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
-N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
-N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
-N_BITS_OBS_POSITION = 63  # assumes 5 rings, 63 sectors
-N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
-N_BITS_OBS_AMMO = 1  # assumes max ammo of 1 -> 1 bit binary
-N_BITS_OBS_PER_TOKEN = 74  # number of bits for a single token observation
-N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens
-N_BITS_OBS_PER_PLAYER = 1790  # total number of bits for each player's complete observation
+    # cross-check hard-coded bit sizes with variables upon which they depend
+    assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
+    assert N_BITS_OBS_POSITION == int(DGP.NUM_SPACES)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
+    assert N_BITS_OBS_FUEL == max(
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_FUEL[U.P2][U.BLUDGER]))))
+    assert N_BITS_OBS_AMMO == max(
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(DGP.INIT_AMMO[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
 
-# cross-check hard-coded bit sizes with variables upon which they depend
-assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
-assert N_BITS_OBS_POSITION == 2 ** (DGP.MAX_RING + 1) - 1
-assert N_BITS_OBS_FUEL == max(
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_FUEL[U.BLUDGER]))))
-assert N_BITS_OBS_AMMO == max(
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.SEEKER]))),
-    len(U.int2bitlist(int(DGP.INIT_AMMO[U.BLUDGER]))))
-assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
+    # action space flat encoding
+    # Note: hard-coding and then cross checking in order
+    # to avoid inadvertent observation space dimension changes
+    N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)*int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS))  #should be movement types + engagement types*tokens per player
+    N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * int(max(DGP.NUM_TOKENS_PER_PLAYER[U.P1],DGP.NUM_TOKENS_PER_PLAYER[U.P2], MAX_N_TOKENS)) #should be tokens per player * bits per token action
 
-# action space flat encoding
-# Note: hard-coding and then cross checking in order
-# to avoid inadvertent observation space dimension changes
-N_BITS_ACT_PER_TOKEN = 38
-N_BITS_ACT_PER_PLAYER = 418
+def init_with_params(game_params):
+    '''
+    Initialize game with parameters provided in game_params, don't import DGP
+    '''
+     # Setup globals
+    global TokenComponentSpaces
+    global GAME_PARAMS
+    global MAX_AMMO
+    global MAX_N_TOKENS
+    global N_BITS_OBS_SCORE
+    global N_BITS_OBS_TURN_COUNT
+    global N_BITS_OBS_TURN_PHASE
+    global N_BITS_OBS_HILL
+    global N_BITS_OBS_SCOREBOARD
+    global N_BITS_OBS_OWN_PIECE
+    global N_BITS_OBS_ROLE
+    global N_BITS_OBS_POSITION
+    global N_BITS_OBS_FUEL
+    global N_BITS_OBS_AMMO
+    global N_BITS_OBS_PER_TOKEN
+    global N_BITS_OBS_TOKENS_PER_PLAYER
+    global N_BITS_OBS_PER_PLAYER
+    global N_BITS_ACT_PER_TOKEN
+    global N_BITS_ACT_PER_PLAYER
+    
+    # observation space components
+    TokenComponentSpaces = namedtuple('TokenComponentSpaces', ['own_piece', 'role', 'position', 'fuel', 'ammo'])
+    
+    # Game Parameters
+    GAME_PARAMS = koth.KOTHGameInputArgs(
+        max_ring=game_params.max_ring,
+        min_ring=game_params.min_ring,
+        geo_ring=game_params.geo_ring,
+        init_board_pattern_p1=game_params.init_board_pattern_p1,
+        init_board_pattern_p2=game_params.init_board_pattern_p2,
+        init_fuel=game_params.init_fuel,
+        init_ammo=game_params.init_ammo,
+        min_fuel=game_params.min_fuel,
+        fuel_usage=game_params.fuel_usage,
+        engage_probs=game_params.engage_probs,
+        illegal_action_score=game_params.illegal_action_score,
+        in_goal_points=game_params.in_goal_points,
+        adj_goal_points=game_params.adj_goal_points,
+        fuel_points_factor=game_params.fuel_points_factor,
+        win_score=game_params.win_score,
+        max_turns=game_params.max_turns,
+        fuel_points_factor_bludger=game_params.fuel_points_factor_bludger,
+        )
+    
+    if game_params.min_ring == 1:
+        num_spaces = 2**(game_params.max_ring + 1) -2**(game_params.min_ring) #Get the number of spaces in the board (not including the center)
+    elif game_params.min_ring > 1:
+        num_spaces = 2**(game_params.max_ring + 1) -2**(game_params.min_ring - 1) #Get the number of spaces in the board (not including the center)
+    
+    # make all of these globals:
+    #Set max ammo for later tests
+    MAX_AMMO = 10
+    MAX_N_TOKENS = 11
+    # observation space flat encoding
+    # Note: Some hard-coded values, some taken from game_params.
+    # Hard-coding and then cross checking helps
+    # to avoid in-advertant observation space dimension changes
+    # due changes in dependent variable
+    N_BITS_OBS_SCORE = 12  # assumes max abs(score) of 1000 -> ownership bit + sign bit + 10 bits binary
+    N_BITS_OBS_TURN_COUNT = len(U.int2bitlist(int(game_params.max_turns)))  # assumes max turns of 100 -> 7 bits binary
+    N_BITS_OBS_TURN_PHASE = 3  # assumes 3 phases per turn (move, engage, drift)
+    N_BITS_OBS_HILL = int(num_spaces+1+1) #number of spaces plus 1 plus a boolen for owner of hill
+    N_BITS_OBS_SCOREBOARD = N_BITS_OBS_TURN_PHASE + N_BITS_OBS_TURN_COUNT + N_BITS_OBS_SCORE + N_BITS_OBS_SCORE + N_BITS_OBS_HILL + N_BITS_OBS_HILL # concate turn_phase, turn_count, own_score, opponent_score, own_hill, opponent_hill
+    N_BITS_OBS_OWN_PIECE = 1  # 0=opponent, 1=own piece
+    N_BITS_OBS_ROLE = 2  # assumes 2 token roles: 0=seeker, 1=bludger, encoded as one-hot
+    N_BITS_OBS_POSITION = int(num_spaces)+1 #number of spaces plus 1, TODO: Note sure why plus 1...
+    N_BITS_OBS_FUEL = 7  # assumes max fuel of 100 -> 7 bits binary
+    N_BITS_OBS_AMMO = max(
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    N_BITS_OBS_PER_TOKEN = N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO  # number of bits for a single token observation own_piece + role + position + fuel + ammo
+    #N_BITS_OBS_TOKENS_PER_PLAYER = 814  # total number of bits for all of one player's tokens, num_tokens * N_BITS_OBS_PER_TOKEN
+    N_BITS_OBS_TOKENS_PER_PLAYER = N_BITS_OBS_PER_TOKEN * MAX_N_TOKENS #number of tokens per player * bits per token
+    N_BITS_OBS_PER_PLAYER = N_BITS_OBS_SCOREBOARD + 2 * N_BITS_OBS_TOKENS_PER_PLAYER # total number of bits for each player's complete observation, scoreboard + tokens*2
 
-def env(rllib_env_config=None):
+    # cross-check hard-coded bit sizes with variables upon which they depend
+    assert N_BITS_OBS_ROLE == len(U.PIECE_ROLES)
+    assert N_BITS_OBS_POSITION == int(num_spaces)+1  #Number of spaces on the board, not counting the center, then have to add 1, not sure why...
+    assert N_BITS_OBS_FUEL == max(
+        len(U.int2bitlist(int(game_params.init_fuel[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_fuel[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(game_params.init_fuel[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_fuel[U.P2][U.BLUDGER]))))
+    assert N_BITS_OBS_AMMO == max(
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P1][U.BLUDGER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.SEEKER]))),
+        len(U.int2bitlist(int(game_params.init_ammo[U.P2][U.BLUDGER]))),
+        len(U.int2bitlist(MAX_AMMO)))
+    assert N_BITS_OBS_PER_TOKEN == N_BITS_OBS_OWN_PIECE + N_BITS_OBS_ROLE + N_BITS_OBS_POSITION + N_BITS_OBS_FUEL + N_BITS_OBS_AMMO
+
+    # action space flat encoding
+    # Note: hard-coding and then cross checking in order
+    # to avoid inadvertent observation space dimension changes
+    N_BITS_ACT_PER_TOKEN = len(U.MOVEMENT_TYPES) + len(U.ENGAGEMENT_TYPES)* MAX_N_TOKENS  #should be movement types + engagement types*tokens per player
+    N_BITS_ACT_PER_PLAYER = N_BITS_ACT_PER_TOKEN * MAX_N_TOKENS #should be tokens per player * bits per token action
+
+
+
+def env(game_params=None,rllib_env_config=None,training_randomize=None, plr_aliases=None):
     '''
     The env function wraps the environment in 3 wrappers by default. These
     wrappers contain logic that is common to many pettingzoo environments.
@@ -94,20 +251,20 @@ def env(rllib_env_config=None):
     to provide sane error messages. You can find full documentation for these methods
     elsewhere in the developer documentation.
     '''
-    env = raw_env(rllib_env_config)
+    env = raw_env(game_params=game_params, rllib_env_config=rllib_env_config, training_randomize=training_randomize, plr_aliases=plr_aliases)
     env = wrappers.CaptureStdoutWrapper(env)
     # env = wrappers.AssertOutOfBoundsWrapper(env)
     env = wrappers.OrderEnforcingWrapper(env)
     return env
 
-def raw_env(rllib_env_config=None):
+def raw_env(game_params=None, rllib_env_config=None, training_randomize=None, plr_aliases=None):
     '''
     To support the AEC API, the raw_env() function just uses the parallel_to_aec
     function to convert from a ParallelEnv to an AEC env
 
     See: https://www.pettingzoo.ml/environment_creation#example-custom-parallel-environment
     '''
-    env = parallel_env(rllib_env_config)
+    env = parallel_env(game_params=game_params,rllib_env_config=rllib_env_config, training_randomize=training_randomize, plr_aliases=plr_aliases)
     env = parallel_to_aec(env)
     return env
 
@@ -129,7 +286,7 @@ def pol2cart(r, a, c):
 class parallel_env(ParallelEnv):
     metadata = {'render.modes': ['human'], "name": "rps_v1"}
 
-    def __init__(self, rllib_env_config=None):
+    def __init__(self, game_params=None, rllib_env_config=None, training_randomize=None,plr_aliases=None, **kwargs):
         '''
         The init method takes in environment arguments and should define the following attributes:
         - possible_agents
@@ -143,8 +300,14 @@ class parallel_env(ParallelEnv):
         https://github.com/PettingZoo-Team/PettingZoo/blob/master/pettingzoo/classic/chess/chess_env.py
         '''
 
-        # instantiate gameboard
-        self.kothgame = koth.KOTHGame(**GAME_PARAMS._asdict())
+        # instantiate game object
+        if game_params is None:
+            #Initialize game with default parameters
+            init_with_defaults()
+            self.kothgame = koth.KOTHGame(**GAME_PARAMS._asdict())
+        else:
+            init_with_params(game_params)
+            self.kothgame = koth.KOTHGame(**game_params._asdict())
 
         # get agent names from game object
         self.possible_agents = self.kothgame.player_names
@@ -167,7 +330,7 @@ class parallel_env(ParallelEnv):
         # Legal actions at current game state
         self.legal_actions = None
 
-	#Flag to track whether we are logging output
+	    #Flag to track whether we are logging output
         self.render_json = None
 
         #Flag to track if game is over
@@ -177,6 +340,17 @@ class parallel_env(ParallelEnv):
             self.workerid = rllib_env_config.worker_index
         else:
             self.workerid = None
+
+        if training_randomize:
+            #If this flag is set, then train on randomized initial game states generated from within the koth.py code
+            self.kothgame.randomize_game_params()
+
+        if plr_aliases is not None:
+            self.plr1_alias = plr_aliases[0]
+            self.plr2_alias = plr_aliases[1]
+        else:
+            self.plr1_alias = U.P1
+            self.plr2_alias = U.P2
 
         # Rendering variables
         # Rendering not always used
@@ -193,10 +367,25 @@ class parallel_env(ParallelEnv):
         self._semi_large_font_bold = None
         self._very_large_font_bold = None
 
+        # font sizes
+        self._very_large_font_size_orig = 48
+        self._very_large_font_size = self._very_large_font_size_orig
+        self._large_font_size_orig = 28
+        self._large_font_size = self._large_font_size_orig
+        self._semi_large_font_size_orig = 24
+        self._semi_large_font_size = self._semi_large_font_size_orig
+        self._font_size_orig = 16
+        self._font_size = self._font_size_orig
+        self._small_font_size_orig = 14
+        self._small_font_size = self._small_font_size_orig
+
         # display dimensions
-        self._x_dim = 1280  # 880
-        self._y_dim = 720  # 560
-        self._ring_count = 5
+        self._x_dim = 1280 #1280  # 880
+        self._y_dim = 720 #720  # 560
+        self._aspect_ratio = self._x_dim / self._y_dim
+        self._x_dim_orig = self._x_dim
+        self._y_dim_orig = self._y_dim
+        self._ring_count = self.kothgame.inargs.max_ring - self.kothgame.inargs.min_ring + 1
         self._margins = (10, 10)
         self._board_r = (self._y_dim - self._margins[1]) / 2
         self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
@@ -204,10 +393,11 @@ class parallel_env(ParallelEnv):
 
         # display colors
         self._colors = {'white': (255, 255, 255), 'faint_green': (220, 255, 220), 'black': (0, 0, 0),
-                        'gray': (150, 150, 150), 'dark_gray': (100, 100, 100), 'aqua': (0, 180, 180),
+                        'gray': (200, 200, 200), 'dark_gray': (100, 100, 100), 'aqua': (0, 180, 180),
                         'red': (200, 0, 120), 'dull_aqua': (120, 150, 150), 'dull_red': (150, 120, 140),
                         'dark_aqua': (0, 80, 80), 'dark_red': (80, 0, 50), 'light_green': (180, 255, 180),
-                        'light_yellow': (255, 255, 200), 'light_aqua': (180, 255, 255), 'light_red': (255, 150, 180)}
+                        'light_yellow': (255, 255, 200), 'light_aqua': (180, 255, 255), 'light_red': (255, 150, 180),
+                        'light_gray': (220, 220, 220)}
         self._bg_color = self._colors['black']
         self._board_color = self._colors['white']
         self._title_color = self._colors['white']
@@ -225,11 +415,29 @@ class parallel_env(ParallelEnv):
 
         # program flow and user control
         self._is_paused = True
-        self._latency = 5000  # milliseconds between displaying turn phases
-        self._min_latency = 500  # milliseconds between displaying turn phases
+        self._latency = 500  # milliseconds between displaying turn phases
+        self._min_latency = 100  # milliseconds between displaying turn phases
         self._buttons_active = False
         self._button_panel = None
         self._button_size = self._x_dim // 20
+
+    def initialize_fonts(self):
+        '''
+        Initializes fonts for rendering
+        '''
+        # initialize fonts
+        very_large_font_size = self._very_large_font_size
+        large_font_size = self._large_font_size
+        semi_large_font_size = self._semi_large_font_size
+        font_size = self._font_size
+        small_font_size = self._small_font_size
+        self._font = pg.font.SysFont(pg.font.get_default_font(), font_size)
+        self._font_bold = pg.font.SysFont(pg.font.get_default_font(), font_size, True)
+        self._large_font = pg.font.SysFont(pg.font.get_default_font(), large_font_size)
+        self._large_font_bold = pg.font.SysFont(pg.font.get_default_font(), large_font_size, True)
+        self._small_font_bold = pg.font.SysFont(pg.font.get_default_font(), small_font_size, True)
+        self._semi_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), semi_large_font_size, True)
+        self._very_large_font_bold = pg.font.SysFont(pg.font.get_default_font(), very_large_font_size, True)
 
     def enable_render(self, mode):
         '''
@@ -239,24 +447,16 @@ class parallel_env(ParallelEnv):
         pg.init()
         self.render_active = True
         self._render_mode = mode
-        self._screen = pg.display.set_mode((self._x_dim, self._y_dim))
+        self._screen = pg.display.set_mode((self._x_dim, self._y_dim), pg.RESIZABLE)
         pg.display.set_caption('Orbit Defender')
-
-        # initialize fonts
-        self._font = pg.font.SysFont('candara', 12)
-        self._font_bold = pg.font.SysFont('candara', 12, True)
-        self._large_font = pg.font.SysFont('candara', 24)
-        self._large_font_bold = pg.font.SysFont('candara', 24, True)
-        self._small_font_bold = pg.font.SysFont('candara', 10, True)
-        self._semi_large_font_bold = pg.font.SysFont('candara', 16, True)
-        self._very_large_font_bold = pg.font.SysFont('candara', 48, True)
+        self.initialize_fonts()
 
     def render(self, mode="human"):
         '''
         Renders the environment. In human mode, it opens
         up a graphical window to display the game board, pieces, and game details.
         '''
-        
+
         if mode == "json":
             print(f'inrender, worker is: {self.workerid}, flag is: {self.render_json}')
             if self.render_json is None:
@@ -281,14 +481,15 @@ class parallel_env(ParallelEnv):
 
         if mode == "human" or mode == "debug":
             self._screen.fill(self._bg_color)
-            self._draw_earth()
             self._draw_board()
+            self._draw_earth()
             self._draw_details()
             self._draw_tokens()
             pg.display.update()
 
         if mode == "human":
-            pg.time.wait(self._latency)
+            #pass
+            self._watch_for_window_resize()
         elif mode == "debug":
             self._handle_events()
 
@@ -310,7 +511,7 @@ class parallel_env(ParallelEnv):
         g_arc_rect_inner = None
         g_arc_rect_outer = None
 
-        g_line_width = 3
+        g_line_width = 4
 
         # draw board ring by ring from the center outwards
         for ring in range(1, self._ring_count + 1):
@@ -332,6 +533,14 @@ class parallel_env(ParallelEnv):
                                 int(self._board_c[1]), ring_r_min, self._board_color)
             pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
                                 int(self._board_c[1]), ring_r_max, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_min-1, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_max-1, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_min+1, self._board_color)
+            pg.gfxdraw.aacircle(self._screen, int(self._board_c[0]),
+                                int(self._board_c[1]), ring_r_max+1, self._board_color)
 
             # draw appropriate number of sectors for current ring
             for sector_idx in range(ring_sectors):
@@ -362,15 +571,25 @@ class parallel_env(ParallelEnv):
 
                 # draw lines on either side of each sector
                 # uses cartesian coordinates (must convert)
-                pg.draw.aaline(self._screen, self._board_color,
-                               pol2cart(ring_r_min, np.degrees(st_angle), self._board_c),
-                               pol2cart(ring_r_max, np.degrees(st_angle), self._board_c))
-                pg.draw.aaline(self._screen, self._board_color,
-                               pol2cart(ring_r_min, np.degrees(end_angle), self._board_c),
-                               pol2cart(ring_r_max, np.degrees(end_angle), self._board_c))
-
+                pg.draw.aalines(self._screen, self._board_color,False,
+                               [(pol2cart(ring_r_min, np.degrees(st_angle), self._board_c)),
+                               (pol2cart(ring_r_max, np.degrees(st_angle), self._board_c)),
+                               (pol2cart(ring_r_min, np.degrees(st_angle), (self._board_c[0],self._board_c[1]+1))),
+                               (pol2cart(ring_r_max, np.degrees(st_angle), (self._board_c[0],self._board_c[1]-1))),
+                               (pol2cart(ring_r_min, np.degrees(st_angle), (self._board_c[0]+1,self._board_c[1]))),
+                               (pol2cart(ring_r_max, np.degrees(st_angle), (self._board_c[0]-1,self._board_c[1]))),                              
+                               ])
+                pg.draw.aalines(self._screen, self._board_color,False,
+                               [(pol2cart(ring_r_min, np.degrees(end_angle), self._board_c)),
+                               (pol2cart(ring_r_max, np.degrees(end_angle), self._board_c)),
+                               (pol2cart(ring_r_min, np.degrees(end_angle), (self._board_c[0],self._board_c[1]+1))),
+                               (pol2cart(ring_r_max, np.degrees(end_angle), (self._board_c[0],self._board_c[1]-1))),
+                               (pol2cart(ring_r_min, np.degrees(end_angle), (self._board_c[0]+1,self._board_c[1]))),
+                               (pol2cart(ring_r_max, np.degrees(end_angle), (self._board_c[0]-1,self._board_c[1]))),                              
+                               ])
+                
                 # number each sector
-                text = self._font_bold.render(str(sector_count), True, self._board_color)
+                text = self._font.render(str(sector_count), True, self._board_color)
                 self._screen.blit(text,
                                   pol2cart(num_r, np.degrees(num_angle), (self._board_c[0] - 5, self._board_c[1] - 5)))
 
@@ -468,7 +687,7 @@ class parallel_env(ParallelEnv):
                                   self._margins[1] + (4 * lb_font_size[1])))
 
         # display legend
-        legend_pos = (x_mid + (30 * lb_font_size[0]), self._margins[1])
+        legend_pos = (x_mid + (18 * lb_font_size[0]), self._margins[1])
         legend_rect = (legend_pos[0],  # left
                        legend_pos[1],  # top
                        self._x_dim - self._margins[0] - legend_pos[0],  # width
@@ -540,29 +759,47 @@ class parallel_env(ParallelEnv):
                           (legend_pos[0] + (7.4 * lb_font_size[0]), legend_pos[1] + (3.75 * lb_font_size[1])))
 
         # display team / player titles
-        p1_title = self._large_font_bold.render("Alpha", True, self._p1_color)
-        self._screen.blit(p1_title, (x_mid - (24 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
+        p1_title = self._large_font_bold.render(self.plr1_alias, True, self._p1_color)
+        self._screen.blit(p1_title, (x_mid - (28 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
 
-        p2_title = self._large_font_bold.render("Beta", True, self._p2_color)
-        self._screen.blit(p2_title, (x_mid + (20 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
+        p2_title = self._large_font_bold.render(self.plr2_alias, True, self._p2_color)
+        self._screen.blit(p2_title, (x_mid + (16 * lb_font_size[0]), self._margins[1] + (5.5 * lb_font_size[1])))
 
         guarded_tokens = dict()  # tracks which tokens are being guarded, stores data for displaying guard counts
         attacked_tokens = []  # tracks which tokens are under attack
         inactive_tokens = []  # tracks which tokens are inactive
         # track each token that is under attack and / or inactive
+
+        #if hasattr(self, 'verbose_actions'):
+        #    self.actions = self.verbose_actions #See if this works... may break other ways to use this env though...
+
         if self.kothgame.game_state[U.TURN_PHASE] == "engagement" and not self._eg_outcomes_phase:
             for token_name, token_state in self.kothgame.token_catalog.items():
-                if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
-                    attacked_tokens.append(token_name)
-
+                #There should be actions that are in koth touple format, but they are probably in gym format instead
+                if self.actions:
+                    if token_name in self.actions:
+                        #print("\n<==== Turn: {} | Phase: {} ====>".format(
+                        #    self.kothgame.game_state[U.TURN_COUNT], 
+                        #    self.kothgame.game_state[U.TURN_PHASE]))
+                        #print("Token: {} | Action: {}".format(token_name, self.actions[token_name].action_type))
+                        if self.actions[token_name].action_type == "shoot" or self.actions[token_name].action_type == "collide":
+                            attacked_tokens.append(token_name)
+                else: #TODO: I think this else can be deleted now...
+                    if hasattr(self, 'verbose_actions'):
+                        #print("Trying engagement with verbose actions")
+                        #print("Token name: {}   token action: {}".format(token_name, self.verbose_actions[token_name].action_type))
+                        if self.verbose_actions[token_name].action_type == "shoot" or self.verbose_actions[token_name].action_type == "collide":
+                            attacked_tokens.append(token_name)
                 if token_state.satellite.fuel == self.kothgame.inargs.min_fuel:
                     inactive_tokens.append(token_name)
 
         # display details of each token
         for token_name, token_state in self.kothgame.token_catalog.items():
+            if token_state.position == 0: #If token is in position 0 (the earth), don't display it
+                continue
             # determine token player (influences color and horizontal alignment)
             split_name = token_name.split(':')
-            if split_name[0] == "alpha":
+            if split_name[0] == U.P1:
                 color = self._p1_color
                 engagement_color = self._p1_color
                 player_x_mid = x_mid - (23 * lb_font_size[0])
@@ -581,14 +818,14 @@ class parallel_env(ParallelEnv):
                 cur_inactive = False
 
             # determine token type and number (influences vertical alignment)
-            if split_name[1] == "seeker":
+            if split_name[1] == U.SEEKER:
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1])
-                name_short = "Seeker"
+                name_short = U.SEEKER + " 0"
             else:
                 t_num = int(token_name[-1])
                 if t_num == 0:
                     t_num = 10
-                name_short = "Bludger " + str(t_num)
+                name_short = U.BLUDGER + " " + str(t_num)
                 player_y_mid = self._margins[1] + (8.5 * lb_font_size[1]) + (t_num * (4 * b_font_size[1]))
 
             # display bounding box
@@ -610,19 +847,20 @@ class parallel_env(ParallelEnv):
             pos = token_state.position
             move_str = ""
             if self.actions and self.kothgame.game_state[U.TURN_PHASE] == "movement":
-                # determine movement type
-                if self.actions[token_name].action_type == "prograde":
-                    move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
-                elif self.actions[token_name].action_type == "retrograde":
-                    move_str = " > " + str(self.kothgame.board_grid.get_retrograde_sector(pos))
-                elif self.actions[token_name].action_type == "radial_in":
-                    move_str = " > " + str(self.kothgame.board_grid.get_radial_in_sector(pos))
-                elif self.actions[token_name].action_type == "radial_out":
-                    move_str = " > " + str(self.kothgame.board_grid.get_radial_out_sector(pos))
-                else:
-                    pass
+                    if token_name in self.actions:
+                        # determine movement type
+                        if self.actions[token_name].action_type == "prograde":
+                            move_str = " > " + str(self.kothgame.board_grid.get_prograde_sector(pos))
+                        elif self.actions[token_name].action_type == "retrograde":
+                            move_str = " > " + str(self.kothgame.board_grid.get_retrograde_sector(pos))
+                        elif self.actions[token_name].action_type == "radial_in":
+                            move_str = " > " + str(self.kothgame.board_grid.get_radial_in_sector(pos))
+                        elif self.actions[token_name].action_type == "radial_out":
+                            move_str = " > " + str(self.kothgame.board_grid.get_radial_out_sector(pos))
+                        else:
+                            pass
             # display engagement or engagement outcomes
-            elif self.actions and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
+            elif self.actions and token_name in self.actions and hasattr(self.actions[token_name], "target") and (self.kothgame.game_state[U.TURN_PHASE] == "engagement" or self._eg_outcomes_phase):
                 # determine target
                 target_name = self.actions[token_name].target
                 target = target_name.split(':')
@@ -639,7 +877,7 @@ class parallel_env(ParallelEnv):
                     # determine attacker
                     # shoot indicator starts at top corner of attacker details, ends at bottom corner of target details
                     # marked by filled triangles
-                    if split_name[0] == "alpha":
+                    if split_name[0] == U.P1:
                         line_start = (x_mid - (5.5 * lb_font_size[0]), player_y_mid - (1.2 * lb_font_size[1]))
                         line_end = (x_mid + (12 * lb_font_size[0]),
                                     self._margins[1] + (8.7 * lb_font_size[1]) +
@@ -692,7 +930,7 @@ class parallel_env(ParallelEnv):
                     # collide indicator starts at top corner of attacker details,
                     # ends at bottom corner of target details
                     # marked by outlined triangles
-                    if split_name[0] == "alpha":
+                    if split_name[0] == U.P1:
                         line_start = (x_mid - (5.5 * lb_font_size[0]), player_y_mid - (1.2 * lb_font_size[1]))
                         line_end = (x_mid + (12 * lb_font_size[0]),
                                     self._margins[1] + (8.7 * lb_font_size[1]) +
@@ -746,7 +984,7 @@ class parallel_env(ParallelEnv):
                     # guard indicator consists of an outlined square and shield
                     # outlined square contains # of target
                     # outlined shield on target contains # of tokens guarding it
-                    if split_name[0] == "alpha":
+                    if split_name[0] == U.P1:
                         shield_center = (x_mid - (10.2 * lb_font_size[0]),
                                          self._margins[1] + (int(target[2]) * (4 * b_font_size[1])) +
                                          (7.6 * lb_font_size[1]))
@@ -837,7 +1075,7 @@ class parallel_env(ParallelEnv):
             self._screen.blit(t_fuel, (player_x_mid, player_y_mid - (0.2 * b_font_size[1])))
 
             # display ammo if token is not seeker
-            if "bludger" in token_name:
+            if U.BLUDGER in token_name:
                 t_ammo_title = self._font_bold.render("Ammo:", True, subtitle_color)
                 self._screen.blit(t_ammo_title,
                                   (player_x_mid + (10 * b_font_size[0]), player_y_mid - (0.2 * b_font_size[1])))
@@ -866,9 +1104,13 @@ class parallel_env(ParallelEnv):
          - Inactive pieces (without fuel) are grayed out in the center
         '''
         sector_occupancies = dict()
-
+        #b_font_size = self._font_bold.size(' ')
+        b_font_size = self._large_font.size(' ')
         # store counts of necessary token types to track occupancy of each sector
         for token_name, token_state in self.kothgame.token_catalog.items():
+            if token_state.position == 0: #If token is in the center, don't display it. This is used for asymmetric game.
+                continue
+
             split_name = token_name.split(':')
 
             # initialize dictionaries for new sectors
@@ -876,48 +1118,48 @@ class parallel_env(ParallelEnv):
                 # counts of each type of token
                 # 'AS': Alpha Seeker, 'ABA': Alpha Bludger Active, 'ABI': Alpha Bludger Inactive,
                 # 'BS': Beta Seeker, 'BBA': Beta Bludger Active, 'BBI': Beta Bludger Inactive
-                sector_occupancies[token_state.position] = {'AS': 0, 'ABA': 0, 'ABI': 0,
-                                                            'BS': 0, 'BBA': 0, 'BBI': 0}
-
-            if split_name[0] == "alpha":
-                if split_name[1] == "seeker":
+                sector_occupancies[token_state.position] = {'AS': [], 'ABA': [], 'ABI': [],
+                                                            'BS': [], 'BBA': [], 'BBI': []}
+            if split_name[0] == U.P1:
+                if split_name[1] == U.SEEKER:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['AS'] = 1  # track active alpha seeker
+                        sector_occupancies[token_state.position]['AS'] = [1]  # track active alpha seeker
                     else:
-                        sector_occupancies[token_state.position]['AS'] = -1  # track inactive alpha seeker
+                        sector_occupancies[token_state.position]['AS'] = [-1]  # track inactive alpha seeker
                 else:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['ABA'] += 1  # track active alpha bludgers
+                        sector_occupancies[token_state.position]['ABA'].append(int(split_name[2]))  # track active alpha bludgers
                     else:
-                        sector_occupancies[token_state.position]['ABI'] += 1  # track inactive alpha bludgers
+                        sector_occupancies[token_state.position]['ABI'].append(int(split_name[2]))  # track inactive alpha bludgers
             else:
-                if split_name[1] == "seeker":
+                if split_name[1] == U.SEEKER:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['BS'] = 1  # track active beta seeker
+                        sector_occupancies[token_state.position]['BS'] = [1]  # track active beta seeker
                     else:
-                        sector_occupancies[token_state.position]['BS'] = -1  # track inactive beta seeker
+                        sector_occupancies[token_state.position]['BS'] = [-1]  # track inactive beta seeker
                 else:
                     if token_state.satellite.fuel != self.kothgame.inargs.min_fuel:
-                        sector_occupancies[token_state.position]['BBA'] += 1  # track active beta bludgers
+                        sector_occupancies[token_state.position]['BBA'].append(int(split_name[2]))  # track active beta bludgers
                     else:
-                        sector_occupancies[token_state.position]['BBI'] += 1  # track inactive beta bludgers
+                        sector_occupancies[token_state.position]['BBI'].append(int(split_name[2]))  # track inactive beta bludgers
 
         # for each occupied sector, draw all tokens within (Seekers depicted as squares, Bludgers depicted as circles)
         for sector, tokens in sector_occupancies.items():
-            seeker_size = self._board_r / self._ring_count / 10
+            seeker_size = self._board_r / self._ring_count / 4
             bludger_size = 3 * seeker_size / 4
             # tracks total count and progress of drawing all level 1 tokens within the sector (Inactive Bludgers)
-            token_count1 = tokens['ABI'] + tokens['BBI']
+            token_count1 = len(tokens['ABI']) + len(tokens['BBI'])
             token_idx1 = 0
             # tracks total count and progress of drawing all level 2 tokens within the sector (Active Bludgers)
-            token_count2 = tokens['ABA'] + tokens['BBA']
+            token_count2 = len(tokens['ABA']) + len(tokens['BBA'])
             token_idx2 = 0
             # tracks total count and progress of drawing all level 3 tokens within the sector (Seekers)
-            token_count3 = abs(tokens['AS']) + abs(tokens['BS'])
+            token_count3 = len(tokens['AS']) + len(tokens['BS'])
             token_idx3 = 0
 
             # iterate over and draw appropriate amount of each type of token within sector
-            for token_type, local_token_count in tokens.items():
+            for token_type, token_ids in tokens.items():
+                local_token_count = len(token_ids)
                 if local_token_count:
                     # determine player / color
                     if token_type[0] == 'A':
@@ -937,26 +1179,48 @@ class parallel_env(ParallelEnv):
                                 pol2cart(seeker_size, token_angle + 315, token_center))
                         token_idx3 += 1
                         # determine whether active or inactive
-                        if local_token_count == 1:
+                        if token_ids[0] == 1:
                             pg.draw.polygon(self._screen, color, rect)
                             pg.draw.polygon(self._screen, outline_color, rect, width=2)
-                        elif local_token_count == -1:
+                        elif token_ids[0] == -1:
                             pg.draw.polygon(self._screen, self._null_color, rect)
                             pg.draw.polygon(self._screen, outline_color, rect, width=2)
+                        #Draw the token number - Always 0 for a seeker
+                        self._screen.blit(self._large_font.render('0', True, (0, 0, 0)),
+                            (token_center[0] - (0.5 * b_font_size[0]),
+                            token_center[1] - (0.45 * b_font_size[1])))
                     else:
                         # determine whether active or inactive
                         if token_type[2] == 'A':
-                            for local_token_idx in range(token_idx2, token_idx2 + local_token_count):
+                            for idx, local_token_idx in enumerate(range(token_idx2, token_idx2 + local_token_count)):
                                 token_center = self.get_token_coords(sector, token_count2, local_token_idx, 2)
                                 pg.draw.circle(self._screen, color, token_center, bludger_size)
                                 pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
-                                token_idx2 += 1
+                                if token_ids[idx] != 10:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (0.5 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx2 += 1
+                                else:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (2.3 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx2 += 1
                         else:
-                            for local_token_idx in range(token_idx1, token_idx1 + local_token_count):
+                            for idx, local_token_idx in enumerate(range(token_idx1, token_idx1 + local_token_count)):
                                 token_center = self.get_token_coords(sector, token_count1, local_token_idx, 1)
                                 pg.draw.circle(self._screen, self._null_color, token_center, bludger_size)
-                                pg.draw.circle(self._screen, outline_color, token_center, bludger_size, width=2)
-                                token_idx1 += 1
+                                pg.draw.circle(self._screen, color, token_center, bludger_size, width=3)
+                                if token_ids[idx] != 10:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (0.5 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx1 += 1
+                                else:
+                                    self._screen.blit(self._large_font.render(str(token_ids[idx]), True, (0, 0, 0)),
+                                                    (token_center[0] - (2.3 * b_font_size[0]),
+                                                    token_center[1] - (0.45 * b_font_size[1])))
+                                    token_idx1 += 1
 
     def get_token_coords(self, sector, token_count, token_idx, level):
         '''Takes a sector, a total number of tokens within the sector, a token index local to the sector, and a level,
@@ -989,6 +1253,38 @@ class parallel_env(ParallelEnv):
 
         return pol2cart(token_r, token_angle, self._board_c)
 
+    def _watch_for_window_resize(self):
+        '''
+        Check for window resize, and if detected, update the window size and redraw the board
+        '''
+        timer = 0
+        while timer < 1000:
+            for event in pg.event.get():
+                if event.type == pg.VIDEORESIZE:
+                    h_ratio = event.h / self._y_dim_orig
+                    w_ratio = event.w / self._x_dim_orig
+                    if h_ratio > w_ratio:
+                        #width is limiting factor, set height based on aspect ratio
+                        h_ratio = w_ratio
+                    else:
+                        #height is limiting factor, set width based on aspect ratio
+                        w_ratio = h_ratio
+                    ratio_mean = (h_ratio + w_ratio) / 2
+                    self._x_dim = w_ratio * self._x_dim_orig
+                    self._y_dim = h_ratio * self._y_dim_orig
+                    self._board_r = (self._y_dim - self._margins[1]) / 2
+                    self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
+                    self._button_size = self._x_dim // 20
+                    self._very_large_font_size = int(ratio_mean * self._very_large_font_size_orig)
+                    self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size_orig)
+                    self._large_font_size = int(ratio_mean * self._large_font_size_orig)
+                    self._font_size = int(ratio_mean * self._font_size_orig)
+                    self._small_font_size = int(ratio_mean * self._small_font_size_orig)
+                    self.initialize_fonts()
+                    self.render(mode=self._render_mode)
+            pg.time.wait(100)
+            timer += 100
+        
     def _handle_events(self):
         '''
         Contains cycle that observes button presses and keystrokes to control program flow
@@ -1033,6 +1329,7 @@ class parallel_env(ParallelEnv):
                                                     self._colors['light_red'])
                                   }
             self._buttons_active = True
+            self.render(mode=self._render_mode)
 
         # draw each button in the button panel
         for button in self._button_panel.values():
@@ -1084,7 +1381,30 @@ class parallel_env(ParallelEnv):
                     elif event.key == pg.K_ESCAPE:  # escape key quits pygame and exits the program
                         self._is_paused, self._latency, do_step, do_quit = \
                             self._button_panel['Quit'].press(self._is_paused, self._latency, self._min_latency)
-
+                elif event.type == pg.VIDEORESIZE:
+                    h_ratio = event.h / self._y_dim_orig
+                    w_ratio = event.w / self._x_dim_orig
+                    if h_ratio > w_ratio:
+                        #width is limiting factor, set height based on aspect ratio
+                        h_ratio = w_ratio
+                    else:
+                        #height is limiting factor, set width based on aspect ratio
+                        w_ratio = h_ratio
+                    ratio_mean = (h_ratio + w_ratio) / 2
+                    self._x_dim = w_ratio * self._x_dim_orig
+                    self._y_dim = h_ratio * self._y_dim_orig
+                    self._board_r = (self._y_dim - self._margins[1]) / 2
+                    self._board_c = (self._board_r + self._margins[0], self._y_dim / 2)
+                    self._button_size = self._x_dim // 20
+                    self._very_large_font_size = int(ratio_mean * self._very_large_font_size_orig)
+                    self._semi_large_font_size = int(ratio_mean * self._semi_large_font_size_orig)
+                    self._large_font_size = int(ratio_mean * self._large_font_size_orig)
+                    self._font_size = int(ratio_mean * self._font_size_orig)
+                    self._small_font_size = int(ratio_mean * self._small_font_size_orig)
+                    self.initialize_fonts()
+                    self._buttons_active = False
+                    self.enable_render(mode=self._render_mode)
+                    self.render(mode=self._render_mode)
             # continue to next phase
             if do_step:
                 break
@@ -1130,61 +1450,99 @@ class parallel_env(ParallelEnv):
                                     (y + (self._button_size / 2) - (0.5 * self._large_font.size(' ')[1]))))
 
         # update only the area of the button
-        pg.display.update(rect)
+        #pg.display.update(rect)
 
     def _draw_earth(self):
         '''
         Displays image of the Earth in the center of the game board that rotates by 180 degrees at each drift phase.
         '''
         # Earth only rotates on drift phase
-        if self.kothgame.game_state[U.TURN_PHASE] == "movement" and self.kothgame.game_state[U.TURN_COUNT] > 0:
-            cycles = 9
-            rot_increment = 20
-        else:
-            cycles = 1
-            rot_increment = 0
-
         ring_r_min = self._board_r / (self._ring_count + 1)
-        for rot_frame in range(cycles):
-            # Increment rotation
-            self._earth_rotation += rot_increment
+        if self.kothgame.game_state[U.TURN_PHASE] == "drift" and self.kothgame.game_state[U.TURN_COUNT] > 0:
+            #Display image with rotation equal to 90 degrees for each turn. Calculate rotatino angle with modulo 360
+            self._earth_rotation = self.kothgame.game_state[U.TURN_COUNT] * 90 % 360
+            
+        # load the image
+        earth_img = pg.image.load(Path(__file__).parent.joinpath("earth.png"))
+        earth_img = pg.transform.scale(earth_img, (2 * ring_r_min, 2 * ring_r_min))
+        
+        # offset from pivot to center
+        w, h = earth_img.get_size()
+        img_rect = earth_img.get_rect(topleft=(self._board_c[0] - (w / 2), self._board_c[1] - (h / 2)))
+        offset_center_to_pivot = pg.math.Vector2(self._board_c) - img_rect.center
 
-            # load the image
-            earth_img = pg.image.load(Path(__file__).parent.joinpath("earth.png"))
-            earth_img = pg.transform.scale(earth_img, (2 * ring_r_min, 2 * ring_r_min))
+        # rotated offset from pivot to center
+        rotated_offset = offset_center_to_pivot.rotate(-self._earth_rotation)
 
-            # offset from pivot to center
-            w, h = earth_img.get_size()
-            img_rect = earth_img.get_rect(topleft=(self._board_c[0] - (w / 2), self._board_c[1] - (h / 2)))
-            offset_center_to_pivot = pg.math.Vector2(self._board_c) - img_rect.center
+        # get rotated image center
+        rotated_image_center = (self._board_c[0] - rotated_offset.x, self._board_c[1] - rotated_offset.y)
 
-            # rotated offset from pivot to center
-            rotated_offset = offset_center_to_pivot.rotate(-self._earth_rotation)
+        # rotate the image and its rectangle
+        rot_img = pg.transform.rotate(earth_img, self._earth_rotation)
+        rot_img_rect = rot_img.get_rect(center=rotated_image_center)
 
-            # get rotated image center
-            rotated_image_center = (self._board_c[0] - rotated_offset.x, self._board_c[1] - rotated_offset.y)
+        # blit the rotated image
+        self._screen.blit(rot_img, rot_img_rect)
 
-            # rotate the image and its rectangle
-            rot_img = pg.transform.rotate(earth_img, self._earth_rotation)
-            rot_img_rect = rot_img.get_rect(center=rotated_image_center)
+        # redraw board lines that get covered by rotated image
+        #pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] - ring_r_min, self._board_c[1]),
+        #                (self._board_c[0] - (2 * ring_r_min), self._board_c[1]))
+        #pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] + ring_r_min, self._board_c[1]),
+        #                (self._board_c[0] + (2 * ring_r_min), self._board_c[1]))
 
-            # blit the rotated image
-            self._screen.blit(rot_img, rot_img_rect)
+        pg.display.update()
+        
+        
+        # if self.kothgame.game_state[U.TURN_PHASE] == "drift" and self.kothgame.game_state[U.TURN_COUNT] > 0:
+        #     cycles = 9
+        #     rot_increment = 10
+        # else:
+        #     cycles = 1
+        #     rot_increment = 0
 
-            # redraw board lines that get covered by rotated image
-            pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] - ring_r_min, self._board_c[1]),
-                           (self._board_c[0] - (2 * ring_r_min), self._board_c[1]))
-            pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] + ring_r_min, self._board_c[1]),
-                           (self._board_c[0] + (2 * ring_r_min), self._board_c[1]))
+        # ring_r_min = self._board_r / (self._ring_count + 1)
+        # for rot_frame in range(cycles):
+        #     # Increment rotation
+        #     self._earth_rotation += rot_increment
 
-            pg.display.update(rot_img_rect)
+        #     # load the image
+        #     earth_img = pg.image.load(Path(__file__).parent.joinpath("earth.png"))
+        #     earth_img = pg.transform.scale(earth_img, (2 * ring_r_min, 2 * ring_r_min))
+
+        #     # offset from pivot to center
+        #     w, h = earth_img.get_size()
+        #     img_rect = earth_img.get_rect(topleft=(self._board_c[0] - (w / 2), self._board_c[1] - (h / 2)))
+        #     offset_center_to_pivot = pg.math.Vector2(self._board_c) - img_rect.center
+
+        #     # rotated offset from pivot to center
+        #     rotated_offset = offset_center_to_pivot.rotate(-self._earth_rotation)
+
+        #     # get rotated image center
+        #     rotated_image_center = (self._board_c[0] - rotated_offset.x, self._board_c[1] - rotated_offset.y)
+
+        #     # rotate the image and its rectangle
+        #     rot_img = pg.transform.rotate(earth_img, self._earth_rotation)
+        #     rot_img_rect = rot_img.get_rect(center=rotated_image_center)
+
+        #     # blit the rotated image
+        #     self._screen.blit(rot_img, rot_img_rect)
+
+        #     # redraw board lines that get covered by rotated image
+        #     pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] - ring_r_min, self._board_c[1]),
+        #                    (self._board_c[0] - (2 * ring_r_min), self._board_c[1]))
+        #     pg.draw.aaline(self._screen, self._board_color, (self._board_c[0] + ring_r_min, self._board_c[1]),
+        #                    (self._board_c[0] + (2 * ring_r_min), self._board_c[1]))
+
+        #     pg.display.update(rot_img_rect)
 
     def draw_win(self, winner):
         '''Displays winner clearly and updates score when game finishes'''
-        if winner == "alpha":
+        if winner == U.P1:
             win_color = self._p1_color
-        elif winner == "beta":
+            winner = self.plr1_alias
+        elif winner == U.P2:
             win_color = self._p2_color
+            winner = self.plr2_alias
         else:
             win_color = self._null_color
 
@@ -1193,7 +1551,7 @@ class parallel_env(ParallelEnv):
         l_font_size = self._large_font.size(' ')
         winner_title = self._very_large_font_bold.render("Winner: ", True, self._title_color)
         self._screen.blit(winner_title, ((self._x_dim / 2) - (5 * vl_font_size[0]), self._margins[1]))
-        winner_text = self._very_large_font_bold.render(winner.capitalize(), True, win_color)
+        winner_text = self._very_large_font_bold.render(winner, True, win_color)
         self._screen.blit(winner_text, ((self._x_dim / 2) + (12 * vl_font_size[0]), self._margins[1]))
 
         # display score
@@ -1220,7 +1578,6 @@ class parallel_env(ParallelEnv):
                                      self._margins[1] + lb_font_size[1]))
 
         pg.display.update()
-
         if self._render_mode == "human":
             pg.time.wait(self._latency)
         elif self._render_mode == "debug":
@@ -1235,8 +1592,9 @@ class parallel_env(ParallelEnv):
         '''
 
         # deactivates pygame library and closes render window
-        pg.time.wait(self._latency)
-        pg.close()
+        #pg.time.wait(self._latency)
+        #pg.close()
+        pg.quit() #Don't need either, let the user decide when to close the window
 
     def reset(self):
         '''
@@ -1252,6 +1610,12 @@ class parallel_env(ParallelEnv):
         self.gameover = False
         self.render_json = None
         return observations
+    
+    def screen_shot(self, file_name):
+        '''
+        Save a screenshot of the current game state to a file.
+        '''
+        pg.image.save(self._screen, file_name)
 
     def step(self, actions):
         '''
@@ -1269,6 +1633,7 @@ class parallel_env(ParallelEnv):
             return {}, {}, {}, {}
 
         # convert gym-encoded actions to verbose actions and pass to koth game
+        self.verbose_actions = self.decode_all_discrete_actions(actions=actions)
         verbose_actions = self.decode_all_discrete_actions(actions=actions)
 
         # Update state of game
@@ -1294,7 +1659,7 @@ class parallel_env(ParallelEnv):
 
             # apply engagement actions to progress to engagment
             eng_rew = self.kothgame.apply_verbose_actions(actions=verbose_actions)
-            assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
+            #assert self.kothgame.game_state[U.TURN_PHASE] == U.DRIFT
 
             if self.render_json is not None:
                 # gs_dict = U.get_game_state(self.kothgame.game_state, self.kothgame.token_catalog)
@@ -1334,7 +1699,7 @@ class parallel_env(ParallelEnv):
 
         if all(dones.values()):
             self.gameover = True
-            print('Game has ended')
+            #print('Game has ended')
             
          #Close file if game is over
         if self.gameover and (self.render_json is not None):
@@ -1354,6 +1719,123 @@ class parallel_env(ParallelEnv):
             'observation': self.encode_player_observation(player_id=agent)[0],
             'action_mask': self.encode_legal_action_mask(player_id=agent)
         } for agent in self.agents}
+    
+    def set_state_from_dict_observations(self,p1_id, obs_dict_1, p2_id, obs_dict_2):
+        '''
+            Return decoded, verbose observations for both players from dicts of observations.
+            Sets the self.kothgame.game_state and self.kothgame.token_catalog to the game state and token catalog
+            Uses the observation dict returned by encode_player observation.
+            This is similar to arbitraty_game_state_from_server in koth.py but uses the observation dict instead of a server gamestate.
+            It cane be used to update the penv to a desired game state in order to call step and get a new observation out.
+            Useful for a MCTS agent that needs to simulate a game from arbitrary states.
+
+            Inputs:
+                obs_dict_1, obs_dict_2 : dict
+                    observation dicts for player 1 and player 2 from encode_player_observation
+            Outputs:
+                gamestate: a kothgame gamestate object
+                token_catalog: a kothgame token_catalog object
+                n_tokens_alpha: int, number of tokens for player 1
+                n_tokens_beta: int, number of tokens for player 2
+        '''
+        # Get the scoreboard
+        scoreboard_p1 = obs_dict_1['scoreboard']
+        scoreboard_p2 = obs_dict_2['scoreboard']
+
+        # Get each player's tokens
+        tokens_p1 = obs_dict_1['own_tokens']
+        tokens_p1 = list(tokens_p1)
+        tokens_p2 = obs_dict_2['own_tokens']
+        tokens_p2 = list(tokens_p2)
+
+        # Create the game state
+        game_state = {p1_id:dict(), p2_id:dict()}
+
+        # Game wide information
+        game_state[U.TURN_COUNT] = positive_binary_to_int(scoreboard_p1['turn_count'])
+        game_state[U.TURN_PHASE] = U.TURN_PHASE_LIST[scoreboard_p1['turn_phase']]
+        game_state[U.GAME_DONE] = False #Will assume false for now TODO: Check is this is okay
+
+        # Get the goal sectors
+        game_state[U.GOAL1] = scoreboard_p1['own_hill'][1]
+        game_state[U.GOAL2] = scoreboard_p2['own_hill'][1]
+
+        # Get the scores
+        game_state[p1_id][U.SCORE] = positive_binary_to_int(scoreboard_p1['own_score'][1])
+        game_state[p2_id][U.SCORE] = positive_binary_to_int(scoreboard_p2['own_score'][1])
+
+        # Get the token catalog. Use the local kothgame token catalog and just update each token's states
+        local_token_catalog = self.kothgame.token_catalog
+        p1_state = []
+        p2_state = []
+        bludger_counter = 0
+        for t in tokens_p1:
+            player = p1_id
+            role = U.PIECE_ROLES[t[1]]
+            if role == U.BLUDGER:
+                bludger_counter += 1
+                token_num = bludger_counter
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            else:
+                token_num = 0
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            position = t[2]
+            fuel = positive_binary_to_int(t[3])
+            ammo = positive_binary_to_int(t[4])
+            local_token_catalog[token_name] = \
+                KOTHTokenState(
+                    Satellite(fuel=fuel, ammo=ammo), role=role, position=position
+                )
+            p1_state.append(local_token_catalog[token_name])
+     
+        bludger_counter = 0
+        for t in tokens_p2:
+            player = p2_id
+            role = U.PIECE_ROLES[t[1]]
+            if role == U.BLUDGER:
+                bludger_counter += 1
+                token_num = bludger_counter
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            else:
+                token_num = 0
+                token_name = f"{player}{U.TOKEN_DELIMITER}{role}{U.TOKEN_DELIMITER}{token_num}"
+            position = t[2]
+            fuel = positive_binary_to_int(t[3])
+            ammo = positive_binary_to_int(t[4])
+            local_token_catalog[token_name] = \
+                KOTHTokenState(
+                    Satellite(fuel=fuel, ammo=ammo), role=role, position=position
+                )
+            p2_state.append(local_token_catalog[token_name])
+
+        # Add the token states to the game state
+        game_state[p1_id][U.TOKEN_STATES] = p1_state #p1state
+        game_state[p2_id][U.TOKEN_STATES] = p2_state #p2state
+        
+        #update token adjancency
+        game_state[U.TOKEN_ADJACENCY] = koth.get_token_adjacency_graph(self.kothgame.board_grid, local_token_catalog)
+
+        # Update legal actions
+        game_state[U.LEGAL_ACTIONS] = koth.get_legal_verbose_actions(
+            turn_phase=game_state[U.TURN_PHASE],
+            token_catalog=local_token_catalog,
+            board_grid=self.kothgame.board_grid,
+            token_adjacency_graph=game_state[U.TOKEN_ADJACENCY],
+            min_ring=self.kothgame.inargs.min_ring,
+            max_ring=self.kothgame.inargs.max_ring)
+        
+        #Set the fuel score for each play based on current fuel and current score
+        fuel_point_alpha = self.kothgame.get_fuel_points(U.P1)
+        fuel_point_beta = self.kothgame.get_fuel_points(U.P2)
+        game_state[p1_id][U.FUEL_SCORE] = fuel_point_alpha
+        game_state[p2_id][U.FUEL_SCORE] = fuel_point_beta
+
+        self.kothgame.game_state = game_state
+        self.kothgame.token_catalog = local_token_catalog
+        self.kothgame.n_tokens_alpha = len(p1_state)
+        self.kothgame.n_tokens_beta = len(p2_state)
+
+        return game_state, local_token_catalog, len(p1_state), len(p2_state)
 
     def decode_all_flat_actions(self, actions):
         '''return decoded, verbose actions for all players'''
@@ -1472,8 +1954,11 @@ class parallel_env(ParallelEnv):
         assert self.obs_space_info.flat_per_token_components.position.contains(flat_obs_position)
 
         # encode fuel, verify against obs_space_info
-        obs_fuel = get_non_negative_binary_observation(self.kothgame.token_catalog[token_id].satellite.fuel,
-                                                       N_BITS_OBS_FUEL)
+        if self.kothgame.token_catalog[token_id].satellite.fuel < 0:
+            tmp_fuel = 0
+        else:
+            tmp_fuel = self.kothgame.token_catalog[token_id].satellite.fuel
+        obs_fuel = get_non_negative_binary_observation(tmp_fuel, N_BITS_OBS_FUEL)
         flat_obs_fuel = spaces.flatten(self.obs_space_info.per_token_components.fuel, obs_fuel)
         assert self.obs_space_info.per_token_components.fuel.contains(obs_fuel), "obs_fuel: {}".format(obs_fuel)
         assert self.obs_space_info.flat_per_token_components.fuel.contains(flat_obs_fuel)
@@ -1547,7 +2032,7 @@ class parallel_env(ParallelEnv):
         # own-hill observation
         obs_own_hill = self.kothgame.game_state[own_hill]
         obs_own_hill = tuple((np.array([True]), obs_own_hill))
-        assert self.obs_space_info.scoreboard['own_hill'].contains(obs_own_hill)
+        assert self.obs_space_info.scoreboard['own_hill'].contains(obs_own_hill) #TODO: Figure out why I can't get this to work
         flat_obs_own_hill = spaces.flatten(self.obs_space_info.scoreboard['own_hill'], obs_own_hill)
         assert flat_obs_own_hill.shape == (N_BITS_OBS_HILL,)
 
@@ -1888,7 +2373,7 @@ class parallel_env(ParallelEnv):
                 decoded_act = U.EngagementTuple(
                     action_type=act_type,
                     target=token_id,
-                    prob=self.kothgame.inargs.engage_probs[U.IN_SEC][U.NOOP])
+                    prob=self.kothgame.inargs.engage_probs[U.P1][U.IN_SEC][U.NOOP]) #Technically should check p1 or p2, but NOOP will always be 1.0 prop anyways.
             else:
                 raise ValueError("Unexpected turn phase: {}".format(self.kothgame.game_state[U.TURN_PHASE]))
 
@@ -2052,8 +2537,8 @@ class KOTHActionSpaces:
         '''
 
         # enforce identical action spaces
-        if game.n_tokens_alpha != game.n_tokens_beta:
-            raise NotImplementedError('Both players must have same number of tokens')
+        #if game.n_tokens_alpha != game.n_tokens_beta:
+        #    raise NotImplementedError('Both players must have same number of tokens')
         self.n_tokens_per_player = game.n_tokens_alpha
 
         # create list of actions that maps index to discrete gym action
@@ -2133,7 +2618,7 @@ class KOTHObservationSpaces:
         '''
 
         if game.n_tokens_alpha != game.n_tokens_beta:
-            raise NotImplementedError('Both playe must have same number of tokens')
+            raise NotImplementedError('Both players must have same number of tokens')
         n_tokens_per_player = game.n_tokens_alpha
 
         # non-token game observations
@@ -2141,7 +2626,7 @@ class KOTHObservationSpaces:
         turn_count = spaces.MultiBinary(len(U.int2bitlist(game.inargs.max_turns)))
         ownership = spaces.MultiBinary(1)
         score = spaces.MultiBinary(max(
-            len(U.int2bitlist(int(game.inargs.win_score))),
+            len(U.int2bitlist(int(max(game.inargs.win_score[U.P1],game.inargs.win_score[U.P2])))),
             1 + len(U.int2bitlist(int(abs(game.inargs.illegal_action_score))))
         ))
         score = spaces.Tuple((ownership, score))
@@ -2163,11 +2648,16 @@ class KOTHObservationSpaces:
             role=spaces.Discrete(len(U.PIECE_ROLES)),
             position=spaces.Discrete(game.board_grid.n_sectors),
             fuel=spaces.MultiBinary(max(
-                len(U.int2bitlist(int(game.inargs.init_fuel[U.SEEKER]))),
-                len(U.int2bitlist(int(game.inargs.init_fuel[U.BLUDGER]))))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P1][U.SEEKER]))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P1][U.BLUDGER]))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P2][U.SEEKER]))),
+                len(U.int2bitlist(int(game.inargs.init_fuel[U.P2][U.BLUDGER]))))),
             ammo=spaces.MultiBinary(max(
-                len(U.int2bitlist(game.inargs.init_ammo[U.SEEKER])),
-                len(U.int2bitlist(game.inargs.init_ammo[U.BLUDGER]))))
+                len(U.int2bitlist(game.inargs.init_ammo[U.P1][U.SEEKER])),
+                len(U.int2bitlist(game.inargs.init_ammo[U.P1][U.BLUDGER])),
+                len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.SEEKER])),
+                len(U.int2bitlist(game.inargs.init_ammo[U.P2][U.BLUDGER])),
+                len(U.int2bitlist(int(MAX_AMMO)))))
         )
 
         # flattened observation of single token (1D vector normalized elements to range [0,1])
@@ -2249,3 +2739,17 @@ def get_binary_observation(val, n_bits):
     obs_val[-len(val_bin):] = val_bin
 
     return obs_val
+
+def binary_to_int(bin_array):
+    '''convert little-endian binary array to int.
+    Negative numbers start with 1, positive start with zero
+    '''
+    is_neg = bin_array[0]
+    val = int(''.join(map(str, [int(i) for i in bin_array[1:]])), 2)
+    return -val if is_neg else val
+
+def positive_binary_to_int(bin_array):
+    '''convert little-endian binary array to int.
+    '''
+    val = int(''.join(map(str, [int(i) for i in bin_array])), 2)
+    return val

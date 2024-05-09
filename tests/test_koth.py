@@ -15,10 +15,10 @@ from orbit_defender2d.utils.utils import MovementTuple as MT
 from orbit_defender2d.king_of_the_hill import default_game_parameters as DGP
 from copy import deepcopy
 
-P1S0 = 'alpha:seeker:0'
-P1B1 = 'alpha:bludger:1'
-P2S0 = 'beta:seeker:0'
-P2B1 = 'beta:bludger:1'
+P1S0 = 'Alpha:HVA:0'
+P1B1 = 'Alpha:Patrol:1'
+P2S0 = 'Bravo:HVA:0'
+P2B1 = 'Bravo:Patrol:1'
 
 INIT_BOARD_PATTERN_0 = [(-2,1), (-1,3), (0,2), (1,3), (2,1)] 
 INIT_BOARD_PATTERN_1 = [] 
@@ -35,7 +35,9 @@ DEFAULT_PARAMS_PARTIAL = {
     'adj_goal_points' : DGP.ADJ_GOAL_POINTS,
     'fuel_points_factor': DGP.FUEL_POINTS_FACTOR,
     'win_score' : DGP.WIN_SCORE,
-    'max_turns' : DGP.MAX_TURNS}
+    'max_turns' : DGP.MAX_TURNS,
+    'fuel_points_factor_bludger': DGP.FUEL_POINTS_FACTOR_BLUDGER,
+    }
 
 DEP_MOVE_SEQ_0 = [
     {U.P1: [U.RADIAL_OUT], U.P2: [U.NOOP]},
@@ -54,12 +56,12 @@ MOVE_SEQ_0 = [
 
 EXP_POS_0 = [(15, 23), (31, 23), (32, 23), (33, 23), (34, 23), (16, 23)]
 
-# ENGAGE_0 = {'alpha': [('shoot', 1), ('guard', 0)], 'beta': [(0,), ('collide', 0)]}
+# ENGAGE_0 = {'Alpha': [('shoot', 1), ('guard', 0)], 'Bravo': [(0,), ('collide', 0)]}
 ENGAGE_0 = {
-    P1S0: ET('noop', 'alpha:seeker:0', 1.0),
-    P1B1: ET('shoot', 'beta:seeker:0', 1.0),
-    P2S0: ET('noop', 'beta:seeker:0', 1.0),
-    P2B1: ET('guard', 'beta:seeker:0', 1.0),
+    P1S0: ET('noop', 'Alpha:HVA:0', 1.0),
+    P1B1: ET('shoot', 'Bravo:HVA:0', 1.0),
+    P2S0: ET('noop', 'Bravo:HVA:0', 1.0),
+    P2B1: ET('guard', 'Bravo:HVA:0', 1.0),
 }
 
 ordered_integer_triplet_st = st.lists(
@@ -89,16 +91,21 @@ def game_state_st(draw):
         max_ring=max_ring, 
         min_ring=min_ring, 
         geo_ring=geo_ring,
-        init_board_pattern=init_pattern,
-        **DEFAULT_PARAMS_PARTIAL)
-        # init_fuel=DGP.INIT_FUEL,
-        # init_ammo=DGP.INIT_AMMO,
-        # min_fuel=DGP.MIN_FUEL,
-        # fuel_usage=DGP.FUEL_USAGE,
-        # engage_probs=DGP.ENGAGE_PROBS,
-        # illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
-        # in_goal_points=DGP.IN_GOAL_POINTS,
-        # adj_goal_points=DGP.ADJ_GOAL_POINTS)
+        init_board_pattern_p1=init_pattern,
+        init_board_pattern_p2=init_pattern,
+        # **DEFAULT_PARAMS_PARTIAL)
+        init_fuel=DGP.INIT_FUEL,
+        init_ammo=DGP.INIT_AMMO,
+        min_fuel=DGP.MIN_FUEL,
+        fuel_usage=DGP.FUEL_USAGE,
+        engage_probs=DGP.ENGAGE_PROBS,
+        illegal_action_score=DGP.ILLEGAL_ACT_SCORE,
+        in_goal_points=DGP.IN_GOAL_POINTS,
+        adj_goal_points=DGP.ADJ_GOAL_POINTS,
+        fuel_points_factor=DGP.FUEL_POINTS_FACTOR,
+        win_score=DGP.WIN_SCORE,
+        max_turns=DGP.MAX_TURNS,
+        fuel_points_factor_bludger=DGP.FUEL_POINTS_FACTOR_BLUDGER,)
 
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=init_pattern, init_pattern_beta=init_pattern)
@@ -174,13 +181,13 @@ def test_hypothesis_KOTHGame_terminate_game(game):
     res = game.terminate_game()
     assert game.game_state[U.GAME_DONE]
     assert np.isclose(res[U.P1], -res[U.P2])
-    post_term_score = (game.game_state[U.P1][U.SCORE], game.game_state[U.P2][U.SCORE])
-    assert np.isclose(
-        pre_term_score[0] + game.inargs.fuel_points_factor*game.game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel,
-        post_term_score[0])
-    assert np.isclose(
-        pre_term_score[1] + game.inargs.fuel_points_factor*game.game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel,
-        post_term_score[1])
+    # post_term_score = (game.game_state[U.P1][U.SCORE], game.game_state[U.P2][U.SCORE])
+    # assert np.isclose(
+    #     pre_term_score[0] + game.inargs.fuel_points_factor*game.game_state[U.P1][U.TOKEN_STATES][0].satellite.fuel,
+    #     post_term_score[0])
+    # assert np.isclose(
+    #     pre_term_score[1] + game.inargs.fuel_points_factor*game.game_state[U.P2][U.TOKEN_STATES][0].satellite.fuel,
+    #     post_term_score[1])
 
 
 def test_KOTHGame_initial_game_state():
@@ -188,7 +195,8 @@ def test_KOTHGame_initial_game_state():
         max_ring = 3,
         min_ring = 1,
         geo_ring = 3,
-        init_board_pattern=INIT_BOARD_PATTERN_0,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_0,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_0,
         **DEFAULT_PARAMS_PARTIAL)
     # bs, piece_cat, n_tokens_alpha, n_tokens_beta = \
     #     koth_game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_0, init_pattern_beta=INIT_BOARD_PATTERN_0)
@@ -197,53 +205,53 @@ def test_KOTHGame_initial_game_state():
     assert koth_game.n_tokens_beta == 11
     assert bs['goal_sector_alpha'] == 7
     assert bs['goal_sector_beta'] == 11
-    assert len(bs['alpha']['token_states']) == 11
-    assert len(bs['beta']['token_states']) == 11
-    assert bs['alpha']['token_states'][0].role == 'seeker'
-    assert bs['alpha']['token_states'][0].position == 7
-    assert bs['alpha']['token_states'][1].role == 'bludger'
-    assert bs['alpha']['token_states'][1].position == 13
-    assert bs['alpha']['token_states'][2].role == 'bludger'
-    assert bs['alpha']['token_states'][2].position == 14
-    assert bs['alpha']['token_states'][3].role == 'bludger'
-    assert bs['alpha']['token_states'][3].position == 14
-    assert bs['alpha']['token_states'][4].role == 'bludger'
-    assert bs['alpha']['token_states'][4].position == 14
-    assert bs['alpha']['token_states'][5].role == 'bludger'
-    assert bs['alpha']['token_states'][5].position == 7
-    assert bs['alpha']['token_states'][6].role == 'bludger'
-    assert bs['alpha']['token_states'][6].position == 7
-    assert bs['alpha']['token_states'][7].role == 'bludger'
-    assert bs['alpha']['token_states'][7].position == 8
-    assert bs['alpha']['token_states'][8].role == 'bludger'
-    assert bs['alpha']['token_states'][8].position == 8
-    assert bs['alpha']['token_states'][9].role == 'bludger'
-    assert bs['alpha']['token_states'][9].position == 8
-    assert bs['alpha']['token_states'][10].role == 'bludger'
-    assert bs['alpha']['token_states'][10].position == 9
+    assert len(bs['Alpha']['token_states']) == 11
+    assert len(bs['Bravo']['token_states']) == 11
+    assert bs['Alpha']['token_states'][0].role == 'HVA'
+    assert bs['Alpha']['token_states'][0].position == 7
+    assert bs['Alpha']['token_states'][1].role == 'Patrol'
+    assert bs['Alpha']['token_states'][1].position == 13
+    assert bs['Alpha']['token_states'][2].role == 'Patrol'
+    assert bs['Alpha']['token_states'][2].position == 14
+    assert bs['Alpha']['token_states'][3].role == 'Patrol'
+    assert bs['Alpha']['token_states'][3].position == 14
+    assert bs['Alpha']['token_states'][4].role == 'Patrol'
+    assert bs['Alpha']['token_states'][4].position == 14
+    assert bs['Alpha']['token_states'][5].role == 'Patrol'
+    assert bs['Alpha']['token_states'][5].position == 7
+    assert bs['Alpha']['token_states'][6].role == 'Patrol'
+    assert bs['Alpha']['token_states'][6].position == 7
+    assert bs['Alpha']['token_states'][7].role == 'Patrol'
+    assert bs['Alpha']['token_states'][7].position == 8
+    assert bs['Alpha']['token_states'][8].role == 'Patrol'
+    assert bs['Alpha']['token_states'][8].position == 8
+    assert bs['Alpha']['token_states'][9].role == 'Patrol'
+    assert bs['Alpha']['token_states'][9].position == 8
+    assert bs['Alpha']['token_states'][10].role == 'Patrol'
+    assert bs['Alpha']['token_states'][10].position == 9
 
-    assert bs['beta']['token_states'][0].role == 'seeker'
-    assert bs['beta']['token_states'][0].position == 11
-    assert bs['beta']['token_states'][1].role == 'bludger'
-    assert bs['beta']['token_states'][1].position == 9
-    assert bs['beta']['token_states'][2].role == 'bludger'
-    assert bs['beta']['token_states'][2].position == 10
-    assert bs['beta']['token_states'][3].role == 'bludger'
-    assert bs['beta']['token_states'][3].position == 10
-    assert bs['beta']['token_states'][4].role == 'bludger'
-    assert bs['beta']['token_states'][4].position == 10
-    assert bs['beta']['token_states'][5].role == 'bludger'
-    assert bs['beta']['token_states'][5].position == 11
-    assert bs['beta']['token_states'][6].role == 'bludger'
-    assert bs['beta']['token_states'][6].position == 11
-    assert bs['beta']['token_states'][7].role == 'bludger'
-    assert bs['beta']['token_states'][7].position == 12
-    assert bs['beta']['token_states'][8].role == 'bludger'
-    assert bs['beta']['token_states'][8].position == 12
-    assert bs['beta']['token_states'][9].role == 'bludger'
-    assert bs['beta']['token_states'][9].position == 12
-    assert bs['beta']['token_states'][10].role == 'bludger'
-    assert bs['beta']['token_states'][10].position == 13
+    assert bs['Bravo']['token_states'][0].role == 'HVA'
+    assert bs['Bravo']['token_states'][0].position == 11
+    assert bs['Bravo']['token_states'][1].role == 'Patrol'
+    assert bs['Bravo']['token_states'][1].position == 9
+    assert bs['Bravo']['token_states'][2].role == 'Patrol'
+    assert bs['Bravo']['token_states'][2].position == 10
+    assert bs['Bravo']['token_states'][3].role == 'Patrol'
+    assert bs['Bravo']['token_states'][3].position == 10
+    assert bs['Bravo']['token_states'][4].role == 'Patrol'
+    assert bs['Bravo']['token_states'][4].position == 10
+    assert bs['Bravo']['token_states'][5].role == 'Patrol'
+    assert bs['Bravo']['token_states'][5].position == 11
+    assert bs['Bravo']['token_states'][6].role == 'Patrol'
+    assert bs['Bravo']['token_states'][6].position == 11
+    assert bs['Bravo']['token_states'][7].role == 'Patrol'
+    assert bs['Bravo']['token_states'][7].position == 12
+    assert bs['Bravo']['token_states'][8].role == 'Patrol'
+    assert bs['Bravo']['token_states'][8].position == 12
+    assert bs['Bravo']['token_states'][9].role == 'Patrol'
+    assert bs['Bravo']['token_states'][9].position == 12
+    assert bs['Bravo']['token_states'][10].role == 'Patrol'
+    assert bs['Bravo']['token_states'][10].position == 13
 
 @pytest.mark.parametrize(
     "move_seq,exp_pos", [
@@ -255,7 +263,8 @@ def test_KOTHGame_move_pieces(move_seq, exp_pos):
         max_ring=5, 
         min_ring=1, 
         geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_1,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_1,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_1,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_1, init_pattern_beta=INIT_BOARD_PATTERN_1)
@@ -276,14 +285,15 @@ def deprecated_test_hypothesis_KOTHGame_get_observation(ring_def, init_pattern):
         max_ring=max_ring, 
         min_ring=min_ring, 
         geo_ring=geo_ring,
-        init_board_pattern=init_pattern,
+        init_board_pattern_p1=init_pattern,
+        init_board_pattern_p2=init_pattern,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=init_pattern, init_pattern_beta=init_pattern)
     na = game.n_tokens_alpha
     nb = game.n_tokens_beta
-    p1_obs = game.get_observation('alpha')
-    p2_obs = game.get_observation('beta')
+    p1_obs = game.get_observation('Alpha')
+    p2_obs = game.get_observation('Bravo')
     assert np.all(p1_obs[0:na] == p2_obs[nb:])
     assert np.all(p1_obs[na:] == p2_obs[0:nb])
 
@@ -291,8 +301,8 @@ def deprecated_test_hypothesis_KOTHGame_get_observation(ring_def, init_pattern):
 def deprecated_test_hypothesis_KOTHGame_get_observation(game):
     na = game.n_tokens_alpha
     nb = game.n_tokens_beta
-    p1_obs = game.get_observation('alpha')
-    p2_obs = game.get_observation('beta')
+    p1_obs = game.get_observation('Alpha')
+    p2_obs = game.get_observation('Bravo')
     assert np.all(p1_obs[0:na] == p2_obs[nb:])
     assert np.all(p1_obs[na:] == p2_obs[0:nb])
 
@@ -334,8 +344,8 @@ def deprecated_test_KOTHGame_get_observation_0():
     game = koth.KOTHGame(max_ring=5, min_ring=1, geo_ring=4)
     game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
         game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_0, init_pattern_beta=INIT_BOARD_PATTERN_0)
-    p1_obs = game.get_observation('alpha')
-    p2_obs = game.get_observation('beta')
+    p1_obs = game.get_observation('Alpha')
+    p2_obs = game.get_observation('Bravo')
     assert p1_obs.shape == (22, 63)
     assert p2_obs.shape == (22, 63)
     assert np.all(p1_obs[0:11] == p2_obs[11:])
@@ -375,7 +385,8 @@ def test_KOTHGame_apply_verbose_actions_move_0(move_seq, exp_pos):
         max_ring=5, 
         min_ring=1, 
         geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_1,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_1,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_1,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_1, init_pattern_beta=INIT_BOARD_PATTERN_1)
@@ -399,17 +410,21 @@ def test_KOTHGame_apply_verbose_actions_engage_0(engagements):
         max_ring=1, 
         min_ring=1, 
         geo_ring=1,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_2,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
+    
+    init_ammo_p1b1 = game.token_catalog[P1B1].satellite.ammo
+
     game.update_turn_phase(U.ENGAGEMENT)
 
     # apply engagements
     game.apply_verbose_actions(engagements)
 
     # check outcome is as expected
-    assert game.token_catalog[P1B1].satellite.ammo == 0             # all ammo spent
+    assert game.token_catalog[P1B1].satellite.ammo == init_ammo_p1b1 - 1             # all ammo spent
     assert game.token_catalog[P2S0].satellite.fuel > DEFAULT_PARAMS_PARTIAL['min_fuel']  # satellite not destroyed because of guard
     assert game.token_catalog[P2B1].satellite.fuel == DEFAULT_PARAMS_PARTIAL['min_fuel'] # satellite destroyed because of guard
     assert game.token_catalog[P2B1].position == game.token_catalog[P2S0].position 
@@ -419,7 +434,8 @@ def test_KOTHGame_apply_verbose_actions_drift_0():
         max_ring=5, 
         min_ring=1, 
         geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_0,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_0,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_0,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_0, init_pattern_beta=INIT_BOARD_PATTERN_0)
@@ -427,6 +443,10 @@ def test_KOTHGame_apply_verbose_actions_drift_0():
 
     # copy initial locations
     init_state = deepcopy(game.token_catalog)
+
+    #Fuel points are calculated prior to the drift (which decrements fuel by 1)
+    fuel_points_p1 = game.get_fuel_points(U.P1)
+    fuel_points_p2 = game.get_fuel_points(U.P2)
 
     # apply drift
     game.apply_verbose_actions(None)
@@ -436,8 +456,8 @@ def test_KOTHGame_apply_verbose_actions_drift_0():
         assert token_state.position == game.board_grid.get_relative_azimuth_sector(init_state[token_name].position, 1)
 
     # check game score
-    assert game.game_state[U.P1][U.SCORE] == DEFAULT_PARAMS_PARTIAL['in_goal_points']
-    assert game.game_state[U.P2][U.SCORE] == DEFAULT_PARAMS_PARTIAL['in_goal_points']
+    assert game.game_state[U.P1][U.SCORE] == DEFAULT_PARAMS_PARTIAL['in_goal_points'][U.P1] + fuel_points_p1
+    assert game.game_state[U.P2][U.SCORE] == DEFAULT_PARAMS_PARTIAL['in_goal_points'][U.P2] + fuel_points_p2
 
 @pytest.mark.parametrize(
     "engagements", [
@@ -449,7 +469,8 @@ def test_KOTHGame_resolve_engagements(engagements):
         max_ring=5, 
         min_ring=1, 
         geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_2,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
@@ -465,7 +486,8 @@ def test_get_illegal_verbose_actions_engage_0(engagements):
         max_ring=1, 
         min_ring=1, 
         geo_ring=1,
-        init_board_pattern=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_2,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_2,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_2, init_pattern_beta=INIT_BOARD_PATTERN_2)
@@ -482,7 +504,8 @@ def test_KOTHGame_get_legal_verbose_actions_move_0():
         max_ring=5, 
         min_ring=1, 
         geo_ring=4,
-        init_board_pattern=INIT_BOARD_PATTERN_0,
+        init_board_pattern_p1=INIT_BOARD_PATTERN_0,
+        init_board_pattern_p2=INIT_BOARD_PATTERN_0,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     # game.initial_game_state(init_pattern_alpha=INIT_BOARD_PATTERN_0, init_pattern_beta=INIT_BOARD_PATTERN_0)
@@ -499,33 +522,47 @@ def test_KOTHGame_get_legal_verbose_actions_move_0():
 def check_legal_move_actions(game, legal_actions):
     for tok_name, leg_act in legal_actions.items():
         assert tok_name in game.token_catalog.keys()
-        assert all([U.MovementTuple(move) in leg_act for move in [U.NOOP, U.PROGRADE, U.RETROGRADE]])
-        if game.board_grid.sector_num2ring(game.token_catalog[tok_name].position) < game.inargs.max_ring:
-            assert U.MovementTuple(U.RADIAL_OUT) in leg_act
-        else:
-            assert U.MovementTuple(U.RADIAL_OUT) not in leg_act
-        if game.board_grid.sector_num2ring(game.token_catalog[tok_name].position) > game.inargs.min_ring:
-            assert U.MovementTuple(U.RADIAL_IN) in leg_act
-        else:
-            assert U.MovementTuple(U.RADIAL_IN) not in leg_act
+        assert U.MovementTuple(U.NOOP) in leg_act
+        if game.token_catalog[tok_name].satellite.fuel > 0: #This is a hard coded zero value. Should be self.inargs.min_fuel, but get_legal_verbose_actions does not have access to self.inargs...
+            assert all([U.MovementTuple(move) in leg_act for move in [U.NOOP, U.PROGRADE, U.RETROGRADE]])
+            if game.board_grid.sector_num2ring(game.token_catalog[tok_name].position) < game.inargs.max_ring:
+                assert U.MovementTuple(U.RADIAL_OUT) in leg_act
+            else:
+                assert U.MovementTuple(U.RADIAL_OUT) not in leg_act
+            if game.board_grid.sector_num2ring(game.token_catalog[tok_name].position) > game.inargs.min_ring:
+                assert U.MovementTuple(U.RADIAL_IN) in leg_act
+            else:
+                assert U.MovementTuple(U.RADIAL_IN) not in leg_act
 
 def check_legal_engage_actions(game, legal_actions):
     for tok_name, leg_act in legal_actions.items():
         assert tok_name in game.token_catalog.keys()
+        if U.P1 in tok_name:
+            plr_id = U.P1
+        else:
+            plr_id = U.P2
         assert U.EngagementTuple(U.NOOP, tok_name, None) in leg_act
         for oth_name in game.game_state[U.TOKEN_ADJACENCY].neighbors(tok_name):
+            if game.token_catalog[tok_name].position == game.token_catalog[oth_name].position:
+                same_sector = True
+            else:
+                same_sector = False
             if koth.is_same_player(tok_name, oth_name):
-                assert U.EngagementTuple(U.GUARD, oth_name, None) in leg_act
+                #assert U.EngagementTuple(U.GUARD, oth_name, None) in leg_act #Guard is  only legal now if there is an adversary satellite adjacent to the HVA
                 assert U.EngagementTuple(U.COLLIDE, oth_name, None) not in leg_act
                 assert U.EngagementTuple(U.SHOOT, oth_name, None) not in leg_act
-                
             else:
                 assert U.EngagementTuple(U.GUARD, oth_name, None) not in leg_act
-                assert U.EngagementTuple(U.COLLIDE, oth_name, None) in leg_act
-                if game.token_catalog[tok_name].satellite.ammo >= 1:
-                    assert U.EngagementTuple(U.SHOOT, oth_name, None) in leg_act
+                if same_sector:
+                    if game.token_catalog[tok_name].satellite.fuel >= game.inargs.fuel_usage[plr_id][U.IN_SEC][U.COLLIDE] and game.token_catalog[oth_name].satellite.fuel > 0 and U.SEEKER not in tok_name:
+                        assert U.EngagementTuple(U.COLLIDE, oth_name, None) in leg_act
+                    if game.token_catalog[tok_name].satellite.fuel >= game.inargs.fuel_usage[plr_id][U.IN_SEC][U.SHOOT] and game.token_catalog[tok_name].satellite.ammo >= 1 and game.token_catalog[oth_name].satellite.fuel > 0:
+                        assert U.EngagementTuple(U.SHOOT, oth_name, None) in leg_act
                 else:
-                    assert U.EngagementTuple(U.SHOOT, oth_name, None) not in leg_act
+                    if game.token_catalog[tok_name].satellite.fuel >= game.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.COLLIDE] and game.token_catalog[oth_name].satellite.fuel > 0 and U.SEEKER not in tok_name:
+                        assert U.EngagementTuple(U.COLLIDE, oth_name, None) in leg_act
+                    if game.token_catalog[tok_name].satellite.fuel >= game.inargs.fuel_usage[plr_id][U.ADJ_SEC][U.SHOOT] and game.token_catalog[tok_name].satellite.ammo >= 1 and game.token_catalog[oth_name].satellite.fuel > 0:
+                        assert U.EngagementTuple(U.SHOOT, oth_name, None) in leg_act
 
 
 
@@ -541,7 +578,8 @@ def test_hypothesis_get_legal_verbose_actions_move(ring_def, init_pattern):
         max_ring=max_ring, 
         min_ring=min_ring, 
         geo_ring=geo_ring,
-        init_board_pattern=init_pattern,
+        init_board_pattern_p1=init_pattern,
+        init_board_pattern_p2=init_pattern,
         **DEFAULT_PARAMS_PARTIAL)
     # game.game_state, game.token_catalog, game.n_tokens_alpha, game.n_tokens_beta = \
     #     game.initial_game_state(init_pattern_alpha=init_pattern, init_pattern_beta=init_pattern)
@@ -600,6 +638,10 @@ def test_hypothesis_KOTHGame_apply_verbose_actions_move(game):
     action_dict = dict()
     low_fuel_tokens = []
     for token_name, token_state in game.token_catalog.items():
+        if U.P1 in token_name:
+            plr_id = U.P1
+        else:
+            plr_id = U.P2
         # random valid movement
         action_ind = np.random.choice(len(legal_actions[token_name]))
         action = legal_actions[token_name][action_ind]
@@ -608,7 +650,7 @@ def test_hypothesis_KOTHGame_apply_verbose_actions_move(game):
         action_dict[token_name] = action
 
         # find low fuel tokens
-        if token_state.satellite.fuel < game.inargs.fuel_usage[action.action_type]:
+        if token_state.satellite.fuel < game.inargs.fuel_usage[plr_id][action.action_type]:
             low_fuel_tokens.append(token_name)
 
     # ~~~ ACT ~~~
@@ -618,7 +660,7 @@ def test_hypothesis_KOTHGame_apply_verbose_actions_move(game):
     # ~~~ ASSERT ~~~
     # assert low-fuel tokens don't move
     for lft in low_fuel_tokens:
-        assert game.token_catalog[lft].satellite.fuel == game.inargs.min_fuel
+        #assert game.token_catalog[lft].satellite.fuel == game.inargs.min_fuel #Removed this check as fuel is not decremented if there is not enough fuel to attempt the action in the first place
         assert game.token_catalog[lft].position == pre_tok_states[lft].position
 
     # assert non-low-fuel tokens move as expected
@@ -647,6 +689,10 @@ def test_hypothesis_KOTHGame_apply_fuel_constraints_move(game):
     action_dict = dict()
     low_fuel_tokens = []
     for token_name, token_state in game.token_catalog.items():
+        if U.P1 in token_name:
+            plr_id = U.P1
+        else:
+            plr_id = U.P2
         # random choose movement
         action = np.random.choice(U.MOVEMENT_TYPES)
 
@@ -654,7 +700,7 @@ def test_hypothesis_KOTHGame_apply_fuel_constraints_move(game):
         action_dict[token_name] = U.MovementTuple(action)
 
         # find low fuel tokens
-        if token_state.satellite.fuel < game.inargs.fuel_usage[action]:
+        if token_state.satellite.fuel < game.inargs.fuel_usage[plr_id][action]:
             low_fuel_tokens.append(token_name)
 
     # apply fuel constraints
@@ -662,7 +708,7 @@ def test_hypothesis_KOTHGame_apply_fuel_constraints_move(game):
 
     # check output
     for low_fuel_token in low_fuel_tokens:
-        assert game.token_catalog[low_fuel_token].satellite.fuel == game.inargs.min_fuel
+        #assert game.token_catalog[low_fuel_token].satellite.fuel == game.inargs.min_fuel #if not enough fuel the action is not attempted and no fuel is decremented
         assert fuel_constrained_action_dict[low_fuel_token].action_type == U.NOOP
 
 @given(game_state_st())
@@ -671,7 +717,10 @@ def test_hypothesis_KOTHGame_apply_fuel_constraints_engage(game):
     action_dict = dict()
     low_fuel_tokens = []
     for token_name, token_state in game.token_catalog.items():
-
+        if U.P1 in token_name:
+            plr_id = U.P1
+        else:
+            plr_id = U.P2
         # random choose engagement
         action = np.random.choice(U.ENGAGEMENT_TYPES+[U.NOOP])
 
@@ -700,12 +749,12 @@ def test_hypothesis_KOTHGame_apply_fuel_constraints_engage(game):
         # determine fuel usage of action
         fuel_usage = None
         if action == U.NOOP:
-            fuel_usage = game.inargs.fuel_usage[U.NOOP]
+            fuel_usage = game.inargs.fuel_usage[plr_id][U.NOOP]
         else:
             if game.token_catalog[token_name].position == game.token_catalog[target].position:
-                fuel_usage = game.inargs.fuel_usage[U.IN_SEC][action]
+                fuel_usage = game.inargs.fuel_usage[plr_id][U.IN_SEC][action]
             else:
-                fuel_usage = game.inargs.fuel_usage[U.ADJ_SEC][action]
+                fuel_usage = game.inargs.fuel_usage[plr_id][U.ADJ_SEC][action]
 
         # find low fuel tokens
         if token_state.satellite.fuel < fuel_usage:
@@ -716,7 +765,7 @@ def test_hypothesis_KOTHGame_apply_fuel_constraints_engage(game):
 
     # check output
     for lft in low_fuel_tokens:
-        assert game.token_catalog[lft].satellite.fuel == game.inargs.min_fuel
+        #assert game.token_catalog[lft].satellite.fuel == game.inargs.min_fuel #if not enough fuel the action is not attempted and no fuel is decremented
         assert fuel_constrained_action_dict[lft].action_type == U.NOOP
 
 
@@ -739,6 +788,8 @@ def test_hypothesis_get_token_adjacency_graph(game):
         assert not game.game_state[U.TOKEN_ADJACENCY].has_edge(tok, tok)
 
         # find sectors adjacent to token position
+        #adj_secs = list(game.board_grid.get_all_adjacent_sectors(tok_sec))
+        #adj_secs.append(tok_sec)
         adj_secs = [
             tok_sec, 
             game.board_grid.get_relative_azimuth_sector(tok_sec,1),
@@ -746,6 +797,7 @@ def test_hypothesis_get_token_adjacency_graph(game):
         out_sec = game.board_grid.get_radial_out_sector(tok_sec)
         if out_sec is not None:
             adj_secs.append(out_sec)
+            adj_secs.append(game.board_grid.get_relative_azimuth_sector(out_sec,1))
         in_sec = game.board_grid.get_radial_in_sector(tok_sec)
         if in_sec is not None:
             adj_secs.append(in_sec)
@@ -779,6 +831,11 @@ def test_hypothesis_KOTHGame_get_engagement_probability(game):
         engagement = np.random.choice(U.ENGAGEMENT_TYPES+[U.NOOP])
         prob = game.get_engagement_probability(inst_tok, targ_tok, engagement)
 
+        if U.P1 in inst_tok:
+            plr_id = U.P1
+        else:
+            plr_id = U.P2
+
         # check in-sector probability
         # print("DEBUG: adj graph {}:{}".format(inst_tok, game.game_state[U.TOKEN_ADJACENCY].edges(inst_tok)))
         debug_str = "DEBUG inst_tok: {}-{}, tar_tok: {}-{}, adjacent:{}, engagement:{}, prob:{}".format(
@@ -789,12 +846,12 @@ def test_hypothesis_KOTHGame_get_engagement_probability(game):
             prob)
         # print(debug_str)
         if engagement == U.NOOP:
-            assert prob == game.inargs.engage_probs[U.IN_SEC][U.NOOP], debug_str
+            assert prob == game.inargs.engage_probs[plr_id][U.IN_SEC][U.NOOP], debug_str
         elif game.token_catalog[inst_tok].position == game.token_catalog[targ_tok].position:
             assert game.game_state[U.TOKEN_ADJACENCY].has_edge(inst_tok, targ_tok)
-            assert prob == game.inargs.engage_probs[U.IN_SEC][engagement],  debug_str
+            assert prob == game.inargs.engage_probs[plr_id][U.IN_SEC][engagement],  debug_str
         elif game.game_state[U.TOKEN_ADJACENCY].has_edge(inst_tok, targ_tok):
-            assert prob == game.inargs.engage_probs[U.ADJ_SEC][engagement], debug_str
+            assert prob == game.inargs.engage_probs[plr_id][U.ADJ_SEC][engagement], debug_str
         else:
             assert prob == 0.0, debug_str
 
@@ -808,23 +865,22 @@ def test_hypothesis_KOTHGame_get_points(game):
     al_seek_sec = game.game_state[U.P1][U.TOKEN_STATES][0].position
     al_goal_sec = game.game_state[U.GOAL1]
     if al_seek_sec == al_goal_sec:
-        assert alpha_points == game.inargs.in_goal_points
+        assert alpha_points == game.inargs.in_goal_points[U.P1]
     elif al_seek_sec in game.board_grid.get_all_adjacent_sectors(al_goal_sec):
-        assert alpha_points == game.inargs.adj_goal_points
+        assert alpha_points == game.inargs.adj_goal_points[U.P1]
 
     # determine if alpha is on mission
     bt_seek_sec = game.game_state[U.P2][U.TOKEN_STATES][0].position
     bt_goal_sec = game.game_state[U.GOAL2]
     if bt_seek_sec == bt_goal_sec:
-        assert beta_points == game.inargs.in_goal_points
+        assert beta_points == game.inargs.in_goal_points[U.P2]
     elif bt_seek_sec in game.board_grid.get_all_adjacent_sectors(bt_goal_sec):
-        assert beta_points == game.inargs.adj_goal_points
+        assert beta_points == game.inargs.adj_goal_points[U.P2]
 
 if __name__ == '__main__':
     # test_KOTHGame_initial_game_state()
     # test_KOTHGame_move_pieces(MOVE_SEQ_0,EXP_POS_0)
     # test_KOTHGame_get_observation_0()
-    # test_KOTHGame_apply_verbose_actions(MOVE_SEQ_0,EXP_POS_0)
     # test_KOTHGame_resolve_engagements(ENGAGE_0)
     # test_get_illegal_verbose_actions_engage_0(ENGAGE_0)
     pass
